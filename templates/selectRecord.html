@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Selection & Download</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 40px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header-container {
+            position: relative;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .section:hover {
+            border-color: rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.1);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .section-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .tab-container {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 8px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex: 1;
+            position: relative;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #b0b0b0;
+        }
+
+        input[type="datetime-local"] {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="datetime-local"]:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        /* 加载动画 */
+        .loader {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #workflowResult {
+            display: none;
+            margin-top: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 200px;
+            overflow-y: auto;
+            word-break: break-all;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .section {
+                padding: 20px;
+            }
+
+            .btn {
+                padding: 10px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-container">
+            <h1>Meeting Audio Processing</h1>
+        </div>
+
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="openTab(event, 'downloadTab')">
+                <span class="tab-icon">🎧</span>
+                Download Audio
+            </button>
+            <button class="tab-btn" onclick="openTab(event, 'workflowTab')">
+                <span class="tab-icon">🔄</span>
+                Send to Workflow
+            </button>
+        </div>
+
+        <div id="downloadTab" class="tab-content active">
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon">📥</div>
+                    <h2>Select Time Range for Audio Download</h2>
+                </div>
+                <form id="downloadForm" method="post" action="/download">
+                    <div class="form-group">
+                        <label>Start Time:</label>
+                        <input type="datetime-local" name="start_time" required step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>End Time:</label>
+                        <input type="datetime-local" name="end_time" required step="1">
+                    </div>
+                    <div class="btn-container">
+                        <button type="submit" class="btn">Download Merged Audio</button>
+                        <div class="loader" id="downloadLoader"></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="workflowTab" class="tab-content">
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">🔄</div>
+                    <h2>Send Merged Audio to Workflow</h2>
+                </div>
+                <form id="workflowForm" method="post" action="/workflow">
+                    <div class="form-group">
+                        <label>Start Time:</label>
+                        <input type="datetime-local" name="start_time" required step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>End Time:</label>
+                        <input type="datetime-local" name="end_time" required step="1">
+                    </div>
+                    <!-- 新增 workflow 类型选择 -->
+                    <div class="form-group">
+                        <label for="workflowType">Workflow type:</label>
+                        <select name="workflow_type" id="workflowType" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                            <option value="recognize">Transcribe content</option>
+                            <option value="summary">Get summary</option>
+                        </select>
+                    </div>
+                    <!-- 获取总结时显示的 checkbox -->
+                    <div class="form-group" id="audioCheckboxGroup" style="display:none;">
+                        <label>
+                            <input type="checkbox" name="generate_audio" checked style="margin-right:8px;">
+                            Generate Audio
+                        </label>
+                    </div>
+                    <!-- 邮箱输入框 -->
+<!--                    <div class="form-group">-->
+<!--                        <label for="emailInput">Email address (results will be sent to this email address):</label>-->
+<!--                        <input type="email" name="email" id="emailInput" required style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">-->
+<!--                    </div>-->
+                    <div class="btn-container">
+                        <button type="submit" class="btn">Send to Workflow</button>
+                        <div class="loader" id="workflowLoader"></div>
+                    </div>
+                </form>
+                <div id="workflowProgressBar" style="display:none;margin-top:20px;">
+                    <div style="background:#222;border-radius:8px;overflow:hidden;">
+                        <div id="workflowProgressInner" style="height:18px;width:0%;background:linear-gradient(90deg,#667eea,#764ba2);transition:width 0.3s;"></div>
+                    </div>
+                    <ul id="workflowSteps" style="margin-top:10px;font-size:14px;list-style:none;padding-left:0;"></ul>
+                </div>
+                <div id="workflowResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        function openTab(evt, tabName) {
+            let i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        document.getElementById('downloadForm').onsubmit = async function(e) {
+            e.preventDefault();
+            document.getElementById('downloadLoader').style.display = 'block';
+
+            const form = this;
+            const startInput = form.querySelector('input[name="start_time"]');
+            const endInput = form.querySelector('input[name="end_time"]');
+
+            // 转换为UTC字符串（去掉毫秒和Z）
+            function toUTCString(localStr) {
+                const date = new Date(localStr);
+                // yyyy-MM-ddTHH:mm:ss
+                return date.getUTCFullYear() + '-' +
+                    String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
+                    String(date.getUTCDate()).padStart(2, '0') + 'T' +
+                    String(date.getUTCHours()).padStart(2, '0') + ':' +
+                    String(date.getUTCMinutes()).padStart(2, '0') + ':' +
+                    String(date.getUTCSeconds()).padStart(2, '0');
+            }
+
+            const formData = new FormData();
+            formData.append('start_time', toUTCString(startInput.value));
+            formData.append('end_time', toUTCString(endInput.value));
+
+            try {
+                const resp = await fetch('/download', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (resp.ok) {
+                    const blob = await resp.blob();
+                    // 尝试从header获取文件名
+                    let filename = 'audio.wav';
+                    const disposition = resp.headers.get('Content-Disposition');
+                    if (disposition && disposition.indexOf('filename=') !== -1) {
+                        filename = decodeURIComponent(disposition.split('filename=')[1].replace(/['"]/g, ''));
+                    }
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert('下载失败: ' + resp.statusText);
+                }
+            } catch (err) {
+                alert('请求出错: ' + err.message);
+            } finally {
+                document.getElementById('downloadLoader').style.display = 'none';
+            }
+        }
+
+        // workflow 类型切换时显示/隐藏 checkbox
+        document.addEventListener('DOMContentLoaded', function() {
+            let workflowType = document.getElementById('workflowType');
+            let audioCheckboxGroup = document.getElementById('audioCheckboxGroup');
+            function updateCheckboxDisplay() {
+                if (workflowType.value === 'summary') {
+                    audioCheckboxGroup.style.display = '';
+                } else {
+                    audioCheckboxGroup.style.display = 'none';
+                }
+            }
+            workflowType.addEventListener('change', updateCheckboxDisplay);
+            updateCheckboxDisplay();
+        });
+
+        document.getElementById('workflowForm').onsubmit = async function(e) {
+            e.preventDefault();
+            document.getElementById('workflowLoader').style.display = 'block';
+            document.getElementById('workflowResult').innerText = "";
+            document.getElementById('workflowResult').style.display = 'none';
+            document.getElementById('workflowProgressBar').style.display = '';
+            document.getElementById('workflowProgressInner').style.width = '0%';
+            document.getElementById('workflowSteps').innerHTML = '';
+
+            const form = this;
+            const formData = new FormData(this);
+            const startInput = form.querySelector('input[name="start_time"]');
+            const endInput = form.querySelector('input[name="end_time"]');
+
+            function toUTCString(localStr) {
+                const date = new Date(localStr);
+                return date.getUTCFullYear() + '-' +
+                    String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
+                    String(date.getUTCDate()).padStart(2, '0') + 'T' +
+                    String(date.getUTCHours()).padStart(2, '0') + ':' +
+                    String(date.getUTCMinutes()).padStart(2, '0') + ':' +
+                    String(date.getUTCSeconds()).padStart(2, '0');
+            }
+            formData.set('start_time', toUTCString(startInput.value));
+            formData.set('end_time', toUTCString(endInput.value));
+
+            // 启动 socketio 客户端
+            const socket = io();
+
+            // 步骤列表
+            const steps = [];
+            let totalSteps = 5; // start, merge, lang_detect, transcribe_x, summary/done
+            let currentStep = 0;
+            let taskId = null;
+
+            // 提交表单，获取 task_id
+            try {
+                const resp = await fetch('/workflow', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+                taskId = data.task_id;
+            } catch (error) {
+                document.getElementById('workflowResult').innerText = "请求失败: " + error.message;
+                document.getElementById('workflowResult').style.display = 'block';
+                document.getElementById('workflowLoader').style.display = 'none';
+                document.getElementById('workflowProgressBar').style.display = 'none';
+                return;
+            }
+
+            // 监听进度事件
+            socket.on('workflow_progress', function(msg) {
+                if (!msg || msg.task_id !== taskId) return;
+                // 记录步骤
+                steps.push(msg.message);
+                currentStep++;
+                // 进度条
+                let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
+                if (msg.step.startsWith('transcribe_')) {
+                    // 动态调整总步数
+                    totalSteps = Math.max(totalSteps, currentStep + 2);
+                    percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
+                }
+                document.getElementById('workflowProgressInner').style.width = percent + '%';
+                // 步骤列表
+                const ul = document.getElementById('workflowSteps');
+                ul.innerHTML = '';
+                steps.forEach((step, idx) => {
+                    ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
+                });
+                // 结果
+                if (msg.step === 'done') {
+                    document.getElementById('workflowResult').style.display = 'block';
+                    document.getElementById('workflowResult').innerText = msg.result || '';
+                    document.getElementById('workflowLoader').style.display = 'none';
+                    document.getElementById('workflowProgressBar').style.display = 'none';
+                    socket.disconnect();
+                }
+            });
+        }
+
+        function toLocalISOString(date) {
+            const pad = n => String(n).padStart(2, '0');
+            const year = date.getFullYear();
+            const month = pad(date.getMonth() + 1); // 月份从0开始
+            const day = pad(date.getDate());
+            const hours = pad(date.getHours());
+            const minutes = pad(date.getMinutes());
+            const seconds = pad(date.getSeconds());
+
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        }
+
+        // Set default time to current time +/- one hour
+        window.onload = function() {
+            const now = new Date();
+            const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+            const oneHourLater = new Date(now.getTime());
+            const startTimeInputs = document.querySelectorAll('input[name="start_time"]');
+            const endTimeInputs = document.querySelectorAll('input[name="end_time"]');
+
+            startTimeInputs.forEach(input => {
+                console.log(toLocalISOString(oneHourAgo));
+                input.value = toLocalISOString(oneHourAgo);
+            });
+
+            endTimeInputs.forEach(input => {
+                input.value = toLocalISOString(oneHourLater);
+            });
+        }
+    </script>
+</body>
+</html>
+
