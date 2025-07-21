@@ -82,19 +82,16 @@ LANGUAGE_MAPPING = {
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='threading')  # 改为threading，兼容requests/httpx
 
-AUDIO_DIR = r"record"
+AUDIO_DIR = r"../record"
 
 
 def parse_timestamp_from_filename(filename):
-    # 文件名格式为 recording_2025-07-16T10_50_39.355072+08_00.wav
     try:
-        match = re.search(r'recording_(\d{4}-\d{2}-\d{2}T\d{2}_\d{2}_\d{2}\.\d+\+\d{2}_\d{2})', filename)
+        match = re.search(r'recording_(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2})', filename)
         if match:
             time_str = match.group(1)
 
-            iso_str = time_str.replace('_', ':')  # 只替换前两个 _ 为 :，最后一个 _ 为 ''
-
-            dt = datetime.fromisoformat(iso_str)
+            dt = datetime.fromisoformat(time_str)
 
             timestamp_utc = dt.astimezone(timezone.utc).replace(tzinfo=None)
 
@@ -108,11 +105,12 @@ def parse_timestamp_from_filename(filename):
 
 def get_files_in_range(start_time, end_time):
     files = []
-    for fname in os.listdir(AUDIO_DIR):
-        if fname.endswith(".wav") and fname.startswith("recording_"):
-            ts = parse_timestamp_from_filename(fname)
-            if ts and start_time <= ts <= end_time:
-                files.append((ts, fname))
+    for root, _, fnames in os.walk(AUDIO_DIR):
+        for fname in fnames:
+            if fname.endswith(".wav") and fname.startswith("recording_"):
+                ts = parse_timestamp_from_filename(fname)
+                if ts and start_time <= ts <= end_time:
+                    files.append((ts, os.path.relpath(os.path.join(root, fname), AUDIO_DIR)))
     files.sort()
     return [fname for ts, fname in files]
 
