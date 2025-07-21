@@ -80,9 +80,9 @@ LANGUAGE_MAPPING = {
 }
 
 app = Flask(__name__)
-socketio = SocketIO(app, async_mode='threading')  # 改为threading，兼容requests/httpx
+socketio = SocketIO(app, async_mode='threading', cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
 
-AUDIO_DIR = r"../record"
+AUDIO_DIR = r"../9090/record"
 
 
 def parse_timestamp_from_filename(filename):
@@ -259,6 +259,9 @@ def workflow():
                         print(f"置信度: {torch.max(confidence_scores).item():.4f}")
                         standard_code = LANGUAGE_MAPPING.get(predicted_language[0], predicted_language[0].lower())
                         print(f"检测语言: {standard_code}")
+                        if torch.max(confidence_scores).item() < 0.5:
+                            print("置信度过低，无法确定语言")
+                            standard_code = "en"  # 默认使用英语
                         socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'lang_detect', 'message': f'检测语言: {standard_code}, 置信度: {torch.max(confidence_scores).item():.4f}'})
                 if standard_code:
                     data = {
