@@ -24,7 +24,6 @@ click==8.1.8
 click-didyoumean==0.3.1
 click-plugins==1.1.1
 click-repl==0.3.0
-cloud-init==24.4.1
 cloudpathlib==0.21.0
 colorama==0.4.4
 coloredlogs==15.0.1
