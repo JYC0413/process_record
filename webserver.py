@@ -323,7 +323,7 @@ def workflow():
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a professional summarizer. Given a transcript of spoken content, return only a concise summary of the main points. The output must be in the same language as the transcript. Do not include any explanations, translations, or additional text — return only the summary."
+                            "content": "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured. Follow this format:\n\n1. Title: A short and relevant title for the meeting\n\n2. Date & Participants: If mentioned, list the meeting date and key participants\n\n3. Summary: A high-level summary of the discussion\n\n4. Key Discussion Points:\n\n* Bullet points covering the main topics discussed\n\n* Include any important decisions made\n\n* Note any action items and who is responsible\n\n5. Next Steps:\n\n* Clearly list the next steps or follow-up items\n\n* Include deadlines (if mentioned) and responsible persons"
                         },
                         {
                             "role": "user",
