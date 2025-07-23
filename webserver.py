@@ -319,11 +319,19 @@ def workflow():
                 socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'done', 'message': '转录完成', 'result': transcripts})
             else:
                 socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'summary', 'message': '正在生成总结'})
+
+                # 使用自定义提示词，如果没有则使用默认提示词
+                custom_prompt = form.get('custom_prompt')
+                if not custom_prompt:
+                    system_message = "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured. Follow this format:\n\n1. Title: A short and relevant title for the meeting\n\n2. Summary: A high-level summary of the discussion\n\n3. Key Discussion Points:\n\n* Bullet points covering the main topics discussed\n\n* Include any important decisions made\n\n* Note any action items and who is responsible\n\n4. Next Steps:\n\n* Clearly list the next steps or follow-up items\n\n* Include deadlines (if mentioned) and responsible persons"
+                else:
+                    system_message = custom_prompt
+
                 payload = json.dumps({
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured. Follow this format:\n\n1. Title: A short and relevant title for the meeting\n\n2. Date & Participants: If mentioned, list the meeting date and key participants\n\n3. Summary: A high-level summary of the discussion\n\n4. Key Discussion Points:\n\n* Bullet points covering the main topics discussed\n\n* Include any important decisions made\n\n* Note any action items and who is responsible\n\n5. Next Steps:\n\n* Clearly list the next steps or follow-up items\n\n* Include deadlines (if mentioned) and responsible persons"
+                            "content": system_message
                         },
                         {
                             "role": "user",
