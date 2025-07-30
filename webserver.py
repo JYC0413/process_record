@@ -369,13 +369,11 @@ def workflow():
             # custom_api
             elif process_type == "custom_api":
                 socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'custom_api', 'message': 'Calling custom API'})
-                custom_prompt = form.get('custom_prompt', '')
                 api_url = custom_api_url or os.getenv("CUSTOM_API_URL", "http://your-custom-api/handle")
                 try:
                     if need_transcribe:
                         payload = {
-                            "prompt": custom_prompt,
-                            "transcript": transcript_from_front or ""
+                            "text": transcript_from_front or ""
                         }
                         with httpx.Client() as client:
                             resp = client.post(api_url, json=payload, timeout=120.0)
@@ -387,9 +385,8 @@ def workflow():
                         merged_audio.export(buf, format="wav")
                         buf.seek(0)
                         files_httpx = {"file": ("audio.wav", buf.getvalue(), "audio/wav")}
-                        data = {"prompt": custom_prompt}
                         with httpx.Client() as client:
-                            resp = client.post(api_url, data=data, files=files_httpx, timeout=120.0)
+                            resp = client.post(api_url, files=files_httpx, timeout=120.0)
                             resp.raise_for_status()
                             result = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else resp.text
                     socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'done', 'message': 'API processing completed', 'result': result})
