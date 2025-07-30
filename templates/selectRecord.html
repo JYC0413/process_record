@@ -311,34 +311,45 @@
                         <label>End Time:</label>
                         <input type="datetime-local" name="end_time" required step="1">
                     </div>
-                    <!-- 新增 workflow 类型选择 -->
-                    <div class="form-group">
-                        <label for="workflowType">Workflow type:</label>
-                        <select name="workflow_type" id="workflowType" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                            <option value="recognize">Transcribe content</option>
-                            <option value="summary">Get summary</option>
-                        </select>
-                    </div>
-                    <!-- 添加自定义 prompt 文本框 -->
-                    <div class="form-group" id="customPromptGroup">
-                        <label for="customPrompt">Custom Prompt (optional):</label>
-                        <textarea name="custom_prompt" id="customPrompt" placeholder="Enter a custom prompt for the AI..."></textarea>
-                    </div>
-                    <!-- 获取总结时显示的 checkbox -->
-                    <div class="form-group" id="audioCheckboxGroup" style="display:none;">
-                        <label>
-                            <input type="checkbox" name="generate_audio" checked style="margin-right:8px;">
-                            Generate Audio
-                        </label>
-                    </div>
-                    <!-- 邮箱输入框 -->
-<!--                    <div class="form-group">-->
-<!--                        <label for="emailInput">Email address (results will be sent to this email address):</label>-->
-<!--                        <input type="email" name="email" id="emailInput" required style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">-->
-<!--                    </div>-->
-                    <div class="btn-container">
-                        <button type="submit" class="btn">Send to Workflow</button>
+                    <div class="btn-container" id="workflowStep1Btns">
+                        <button type="button" class="btn" id="btnTranscribe">Recognize Subtitles</button>
+                        <button type="button" class="btn" id="btnSkip">Skip</button>
                         <div class="loader" id="workflowLoader"></div>
+                    </div>
+                    <!-- Step 2: API input when skipping transcription -->
+                    <div id="skipApiSection" style="display:none;">
+                        <div class="form-group">
+                            <label for="customApiUrl">Custom API address:</label>
+                            <input type="text" id="customApiUrl" name="custom_api_url" placeholder="http://your-api/handle" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                        </div>
+                        <div class="btn-container">
+                            <button type="button" class="btn" id="btnProcessSkip">Direct Audio Processing</button>
+                        </div>
+                    </div>
+                    <!-- Step 2: Show after recognition -->
+                    <div id="transcribeSection" style="display:none;">
+                        <div class="form-group">
+                            <label for="transcribeTextarea">Recognition Result (editable):</label>
+                            <textarea id="transcribeTextarea" style="min-height:120px;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="processType">Processing Type:</label>
+                            <select name="process_type" id="processType" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                                <option value="summary">Summary</option>
+                                <option value="custom_api">Custom API Processing</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="customPromptGroup" style="display:none;">
+                            <label for="customPrompt">Custom Prompt (optional):</label>
+                            <textarea name="custom_prompt" id="customPrompt" placeholder="Enter a custom prompt for the AI..."></textarea>
+                        </div>
+                        <div class="form-group" id="customApiGroup" style="display:none;">
+                            <label for="customApiUrl2">Custom API address:</label>
+                            <input type="text" id="customApiUrl2" name="custom_api_url2" placeholder="http://your-api/handle" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                        </div>
+                        <div class="btn-container">
+                            <button type="button" class="btn" id="btnProcessTranscribe">Process</button>
+                        </div>
                     </div>
                 </form>
                 <div id="workflowProgressBar" style="display:none;margin-top:20px;">
@@ -351,7 +362,6 @@
             </div>
         </div>
     </div>
-
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         function openTab(evt, tabName) {
@@ -415,7 +425,7 @@
                     a.remove();
                     window.URL.revokeObjectURL(url);
                 } else {
-                    alert('下载失败: ' + resp.statusText);
+                    alert('下载失败: ' + resp.message);
                 }
             } catch (err) {
                 alert('请求出错: ' + err.message);
@@ -424,27 +434,305 @@
             }
         }
 
-        // workflow 类型切换时显示/隐藏相关字段
-        document.addEventListener('DOMContentLoaded', function() {
-            let workflowType = document.getElementById('workflowType');
-            let audioCheckboxGroup = document.getElementById('audioCheckboxGroup');
-            let customPromptGroup = document.getElementById('customPromptGroup');
+        // 新UI逻辑
+        let transcribeResult = null;
+        let transcribeTaskId = null;
 
-            function updateFieldsDisplay() {
-                if (workflowType.value === 'summary') {
-                    audioCheckboxGroup.style.display = '';
-                    customPromptGroup.style.display = '';
-                    // 为summary类型设置默认prompt
+        function resetWorkflowUI() {
+            document.getElementById('workflowStep1Btns').style.display = '';
+            document.getElementById('skipApiSection').style.display = 'none';
+            document.getElementById('transcribeSection').style.display = 'none';
+            document.getElementById('workflowResult').style.display = 'none';
+            document.getElementById('workflowResult').innerHTML = '';
+            document.getElementById('workflowProgressBar').style.display = 'none';
+            document.getElementById('workflowProgressInner').style.width = '0%';
+            document.getElementById('workflowSteps').innerHTML = '';
+            document.getElementById('workflowLoader').style.display = 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            resetWorkflowUI();
+
+            // 处理方式切换
+            document.getElementById('processType').addEventListener('change', function() {
+                if (this.value === 'summary') {
+                    document.getElementById('customPromptGroup').style.display = '';
+                    document.getElementById('customApiGroup').style.display = 'none';
                     if (!document.getElementById('customPrompt').value) {
                         document.getElementById('customPrompt').value = "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured. Follow this format:\n\n1. Title: A short and relevant title for the meeting\n\n2. Summary: A high-level summary of the discussion\n\n3. Key Discussion Points:\n\n* Bullet points covering the main topics discussed\n\n* Include any important decisions made\n\n* Note any action items and who is responsible\n\n4. Next Steps:\n\n* Clearly list the next steps or follow-up items\n\n* Include deadlines (if mentioned) and responsible persons";
                     }
                 } else {
-                    audioCheckboxGroup.style.display = 'none';
+                    document.getElementById('customPromptGroup').style.display = 'none';
+                    document.getElementById('customApiGroup').style.display = '';
+                }
+            });
+
+            // 识别字幕
+            document.getElementById('btnTranscribe').onclick = async function() {
+                resetWorkflowUI();
+                document.getElementById('workflowStep1Btns').style.display = 'none';
+                document.getElementById('workflowLoader').style.display = 'block';
+                document.getElementById('workflowProgressBar').style.display = '';
+                const form = document.getElementById('workflowForm');
+                const formData = new FormData(form);
+                const startInput = form.querySelector('input[name="start_time"]');
+                const endInput = form.querySelector('input[name="end_time"]');
+                function toUTCString(localStr) {
+                    const date = new Date(localStr);
+                    return date.getUTCFullYear() + '-' +
+                        String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
+                        String(date.getUTCDate()).padStart(2, '0') + 'T' +
+                        String(date.getUTCHours()).padStart(2, '0') + ':' +
+                        String(date.getUTCMinutes()).padStart(2, '0') + ':' +
+                        String(date.getUTCSeconds()).padStart(2, '0');
+                }
+                formData.set('start_time', toUTCString(startInput.value));
+                formData.set('end_time', toUTCString(endInput.value));
+                formData.set('step', 'transcribe');
+                formData.set('process_type', 'summary'); // 仅用于后端流程判断
+
+                const socket = io();
+                let steps = [];
+                let totalSteps = 3;
+                let currentStep = 0;
+
+                try {
+                    const resp = await fetch('/workflow', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await resp.json();
+                    if (!resp.ok) {
+                        throw new Error(data.message);
+                    }
+                    transcribeTaskId = data.task_id;
+                } catch (error) {
+                    document.getElementById('workflowResult').innerText = "Request failed: " + error;
+                    document.getElementById('workflowResult').style.display = 'block';
+                    document.getElementById('workflowLoader').style.display = 'none';
+                    document.getElementById('workflowProgressBar').style.display = 'none';
+                    // 新增：确保loading结束
+                    document.getElementById('workflowLoader').style.display = 'none';
+                    document.getElementById('workflowProgressBar').style.display = 'none';
+                    return;
+                }
+
+                socket.on('workflow_progress', function(msg) {
+                    if (!msg || msg.task_id !== transcribeTaskId) return;
+                    steps.push(msg.message);
+                    currentStep++;
+                    let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
+                    document.getElementById('workflowProgressInner').style.width = percent + '%';
+                    const ul = document.getElementById('workflowSteps');
+                    ul.innerHTML = '';
+                    steps.forEach((step, idx) => {
+                        ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
+                    });
+                    if (msg.step === 'done') {
+                        document.getElementById('workflowLoader').style.display = 'none';
+                        document.getElementById('workflowProgressBar').style.display = 'none';
+                        transcribeResult = msg.result || '';
+                        document.getElementById('transcribeSection').style.display = '';
+                        document.getElementById('transcribeTextarea').value = transcribeResult || '';
+                        document.getElementById('processType').value = 'summary';
+                        document.getElementById('customPromptGroup').style.display = '';
+                        document.getElementById('customApiGroup').style.display = 'none';
+                        socket.disconnect();
+                    }
+                });
+            };
+
+            // 跳过识别
+            document.getElementById('btnSkip').onclick = function() {
+                resetWorkflowUI();
+                document.getElementById('workflowStep1Btns').style.display = 'none';
+                document.getElementById('skipApiSection').style.display = '';
+            };
+
+            // 跳过识别后处理
+            document.getElementById('btnProcessSkip').onclick = async function() {
+                document.getElementById('workflowResult').style.display = 'none';
+                document.getElementById('workflowResult').innerHTML = '';
+                document.getElementById('workflowLoader').style.display = 'block';
+                document.getElementById('workflowProgressBar').style.display = '';
+                document.getElementById('workflowProgressInner').style.width = '0%';
+                document.getElementById('workflowSteps').innerHTML = '';
+                const form = document.getElementById('workflowForm');
+                const formData = new FormData(form);
+                const startInput = form.querySelector('input[name="start_time"]');
+                const endInput = form.querySelector('input[name="end_time"]');
+                function toUTCString(localStr) {
+                    const date = new Date(localStr);
+                    return date.getUTCFullYear() + '-' +
+                        String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
+                        String(date.getUTCDate()).padStart(2, '0') + 'T' +
+                        String(date.getUTCHours()).padStart(2, '0') + ':' +
+                        String(date.getUTCMinutes()).padStart(2, '0') + ':' +
+                        String(date.getUTCSeconds()).padStart(2, '0');
+                }
+                formData.set('start_time', toUTCString(startInput.value));
+                formData.set('end_time', toUTCString(endInput.value));
+                formData.set('step', 'process');
+                formData.set('process_type', 'custom_api');
+                formData.set('need_transcribe', 'off');
+                formData.set('custom_api_url', document.getElementById('customApiUrl').value);
+
+                const socket = io();
+                let steps = [];
+                let totalSteps = 3;
+                let currentStep = 0;
+                let taskId = null;
+
+                try {
+                    const resp = await fetch('/workflow', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    console.log(resp.ok)
+
+                    const data = await resp.json();
+                    if (!resp.ok) {
+                        throw new Error(data.message);
+                    }
+                    taskId = data.task_id;
+                } catch (error) {
+                    console.log(error)
+                    document.getElementById('workflowResult').innerText = "Request failed: " + error;
+                    document.getElementById('workflowResult').style.display = 'block';
+                    document.getElementById('workflowLoader').style.display = 'none';
+                    document.getElementById('workflowProgressBar').style.display = 'none';
+                    // 新增：确保loading结束
+                    document.getElementById('workflowLoader').style.display = 'none';
+                    document.getElementById('workflowProgressBar').style.display = 'none';
+                    return;
+                }
+
+                socket.on('workflow_progress', function(msg) {
+                    if (!msg || msg.task_id !== taskId) return;
+                    steps.push(msg.message);
+                    currentStep++;
+                    let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
+                    document.getElementById('workflowProgressInner').style.width = percent + '%';
+                    const ul = document.getElementById('workflowSteps');
+                    ul.innerHTML = '';
+                    steps.forEach((step, idx) => {
+                        ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
+                    });
+                    if (msg.step === 'done') {
+                        document.getElementById('workflowResult').style.display = 'block';
+                        renderWorkflowResult(msg.result);
+                        document.getElementById('workflowLoader').style.display = 'none';
+                        document.getElementById('workflowProgressBar').style.display = 'none';
+                        socket.disconnect();
+                    }
+                });
+            };
+
+            // 识别后处理
+            document.getElementById('btnProcessTranscribe').onclick = async function() {
+                document.getElementById('workflowResult').style.display = 'none';
+                document.getElementById('workflowResult').innerHTML = '';
+                document.getElementById('workflowLoader').style.display = 'block';
+                document.getElementById('workflowProgressBar').style.display = '';
+                document.getElementById('workflowProgressInner').style.width = '0%';
+                document.getElementById('workflowSteps').innerHTML = '';
+                const form = document.getElementById('workflowForm');
+                const formData = new FormData(form);
+                const startInput = form.querySelector('input[name="start_time"]');
+                const endInput = form.querySelector('input[name="end_time"]');
+                function toUTCString(localStr) {
+                    const date = new Date(localStr);
+                    return date.getUTCFullYear() + '-' +
+                        String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
+                        String(date.getUTCDate()).padStart(2, '0') + 'T' +
+                        String(date.getUTCHours()).padStart(2, '0') + ':' +
+                        String(date.getUTCMinutes()).padStart(2, '0') + ':' +
+                        String(date.getUTCSeconds()).padStart(2, '0');
+                }
+                formData.set('start_time', toUTCString(startInput.value));
+                formData.set('end_time', toUTCString(endInput.value));
+                formData.set('step', 'process');
+                formData.set('transcript', document.getElementById('transcribeTextarea').value);
+                // 处理方式
+                const processType = document.getElementById('processType').value;
+                formData.set('process_type', processType);
+                if (processType === 'summary') {
+                    formData.set('custom_prompt', document.getElementById('customPrompt').value);
+                } else {
+                    formData.set('custom_api_url', document.getElementById('customApiUrl2').value);
+                }
+
+                const socket = io();
+                let steps = [];
+                let totalSteps = 3;
+                let currentStep = 0;
+                let taskId = null;
+
+                try {
+                    const resp = await fetch('/workflow', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await resp.json();
+                    if (!resp.ok) {
+                        throw new Error(data.message);
+                    }
+                    taskId = data.task_id;
+                } catch (error) {
+                    document.getElementById('workflowResult').innerText = "Request failed: " + error;
+                    document.getElementById('workflowResult').style.display = 'block';
+                    document.getElementById('workflowLoader').style.display = 'none';
+                    document.getElementById('workflowProgressBar').style.display = 'none';
+                    // 新增：确保loading结束
+                    document.getElementById('workflowLoader').style.display = 'none';
+                    document.getElementById('workflowProgressBar').style.display = 'none';
+                    return;
+                }
+
+                socket.on('workflow_progress', function(msg) {
+                    if (!msg || msg.task_id !== taskId) return;
+                    steps.push(msg.message);
+                    currentStep++;
+                    let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
+                    document.getElementById('workflowProgressInner').style.width = percent + '%';
+                    const ul = document.getElementById('workflowSteps');
+                    ul.innerHTML = '';
+                    steps.forEach((step, idx) => {
+                        ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
+                    });
+                    if (msg.step === 'done') {
+                        document.getElementById('workflowResult').style.display = 'block';
+                        renderWorkflowResult(msg.result);
+                        document.getElementById('workflowLoader').style.display = 'none';
+                        document.getElementById('workflowProgressBar').style.display = 'none';
+                        socket.disconnect();
+                    }
+                });
+            };
+        });
+
+        // workflow 类型切换时显示/隐藏相关字段
+        document.addEventListener('DOMContentLoaded', function() {
+            let processType = document.getElementById('processType');
+            let needTranscribeGroup = document.getElementById('needTranscribeGroup');
+            let customPromptGroup = document.getElementById('customPromptGroup');
+
+            function updateFieldsDisplay() {
+                if (processType.value === 'summary') {
+                    needTranscribeGroup.style.display = 'none';
+                    customPromptGroup.style.display = '';
+                    // summary类型设置默认prompt
+                    if (!document.getElementById('customPrompt').value) {
+                        document.getElementById('customPrompt').value = "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured. Follow this format:\n\n1. Title: A short and relevant title for the meeting\n\n2. Summary: A high-level summary of the discussion\n\n3. Key Discussion Points:\n\n* Bullet points covering the main topics discussed\n\n* Include any important decisions made\n\n* Note any action items and who is responsible\n\n4. Next Steps:\n\n* Clearly list the next steps or follow-up items\n\n* Include deadlines (if mentioned) and responsible persons";
+                    }
+                } else if (processType.value === 'custom_api') {
+                    needTranscribeGroup.style.display = '';
                     customPromptGroup.style.display = 'none';
                 }
             }
-
-            workflowType.addEventListener('change', updateFieldsDisplay);
+            processType.addEventListener('change', updateFieldsDisplay);
             updateFieldsDisplay();
         });
 
@@ -479,20 +767,23 @@
 
             // 步骤列表
             const steps = [];
-            let totalSteps = 5; // start, merge, lang_detect, transcribe_x, summary/done
+            let totalSteps = 5;
             let currentStep = 0;
             let taskId = null;
 
-            // 提交表单，获取 task_id
             try {
                 const resp = await fetch('/workflow', {
                     method: 'POST',
                     body: formData
                 });
+
                 const data = await resp.json();
+                if (!resp.ok) {
+                    throw new Error(data.message);
+                }
                 taskId = data.task_id;
             } catch (error) {
-                document.getElementById('workflowResult').innerText = "请求失败: " + error.message;
+                document.getElementById('workflowResult').innerText = "Request failed: " + error;
                 document.getElementById('workflowResult').style.display = 'block';
                 document.getElementById('workflowLoader').style.display = 'none';
                 document.getElementById('workflowProgressBar').style.display = 'none';
@@ -502,27 +793,23 @@
             // 监听进度事件
             socket.on('workflow_progress', function(msg) {
                 if (!msg || msg.task_id !== taskId) return;
-                // 记录步骤
                 steps.push(msg.message);
                 currentStep++;
-                // 进度条
                 let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
                 if (msg.step.startsWith('transcribe_')) {
-                    // 动态调整总步数
                     totalSteps = Math.max(totalSteps, currentStep + 2);
                     percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
                 }
                 document.getElementById('workflowProgressInner').style.width = percent + '%';
-                // 步骤列表
                 const ul = document.getElementById('workflowSteps');
                 ul.innerHTML = '';
                 steps.forEach((step, idx) => {
                     ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
                 });
-                // 结果
                 if (msg.step === 'done') {
                     document.getElementById('workflowResult').style.display = 'block';
-                    document.getElementById('workflowResult').innerText = msg.result || '';
+                    // 动态渲染结果
+                    renderWorkflowResult(msg.result);
                     document.getElementById('workflowLoader').style.display = 'none';
                     document.getElementById('workflowProgressBar').style.display = 'none';
                     socket.disconnect();
@@ -530,6 +817,40 @@
             });
         }
 
+        // 动态渲染结果
+        function renderWorkflowResult(result) {
+            const container = document.getElementById('workflowResult');
+            container.innerHTML = '';
+            if (!result) return;
+            // 判断类型
+            if (typeof result === 'string') {
+                // 链接
+                if (/^https?:\/\/.+/.test(result)) {
+                    if (/\.(mp3|wav|ogg)$/i.test(result)) {
+                        container.innerHTML = `<audio controls src="${result}" style="width:100%"></audio>`;
+                    } else if (/\.(mp4|webm|mov)$/i.test(result)) {
+                        container.innerHTML = `<video controls src="${result}" style="width:100%"></video>`;
+                    } else {
+                        container.innerHTML = `<a href="${result}" target="_blank">${result}</a>`;
+                    }
+                } else {
+                    container.innerText = result;
+                }
+            } else if (result && result.type && result.url) {
+                // 后端返回结构化类型
+                if (result.type === 'audio') {
+                    container.innerHTML = `<audio controls src="${result.url}" style="width:100%"></audio>`;
+                } else if (result.type === 'video') {
+                    container.innerHTML = `<video controls src="${result.url}" style="width:100%"></video>`;
+                } else if (result.type === 'link') {
+                    container.innerHTML = `<a href="${result.url}" target="_blank">${result.url}</a>`;
+                } else {
+                    container.innerText = result.content || JSON.stringify(result);
+                }
+            } else {
+                container.innerText = typeof result === 'object' ? JSON.stringify(result) : result;
+            }
+        }
         function toLocalISOString(date) {
             const pad = n => String(n).padStart(2, '0');
             const year = date.getFullYear();
@@ -551,7 +872,6 @@
             const endTimeInputs = document.querySelectorAll('input[name="end_time"]');
 
             startTimeInputs.forEach(input => {
-                console.log(toLocalISOString(oneHourAgo));
                 input.value = toLocalISOString(oneHourAgo);
             });
 
@@ -562,4 +882,3 @@
     </script>
 </body>
 </html>
-
