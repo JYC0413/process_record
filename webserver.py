@@ -102,7 +102,7 @@ LANGUAGE_MAPPING = {
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='threading', cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
 
-AUDIO_DIR = r"./record"
+AUDIO_DIR = r"../9090/record"
 
 
 def parse_timestamp_from_filename(filename):
