@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作流配置管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .section:hover {
+            border-color: rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #b0b0b0;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .workflows-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .workflow-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .workflow-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .workflow-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .workflow-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-icon {
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.1rem;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-edit {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .btn-edit:hover {
+            background: rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-delete {
+            background: rgba(255, 65, 108, 0.2);
+        }
+
+        .btn-delete:hover {
+            background: rgba(255, 65, 108, 0.4);
+        }
+
+        .workflow-collapsed-content {
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .workflow-expanded-content {
+            display: none;
+        }
+
+        .workflow-expanded-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .add-workflow-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: #b0b0b0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .add-workflow-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: rgba(102, 126, 234, 0.3);
+            color: #fff;
+        }
+
+        .footer-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(39, 174, 96, 0.9);
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.error {
+            background: rgba(231, 76, 60, 0.9);
+        }
+
+        .code-editor {
+            position: relative;
+        }
+
+        .expand-editor {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .expand-editor:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            width: 90%;
+            max-width: 800px;
+            background: linear-gradient(135deg, #1f1f3f 0%, #1a1a2e 100%);
+            border-radius: 15px;
+            padding: 25px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: #b0b0b0;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .close-modal:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            max-height: 60vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 15px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .section, .workflow-item {
+                padding: 15px;
+            }
+
+            .workflow-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .footer-actions {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .tab-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            color: #b0b0b0;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .tab:hover {
+            color: #fff;
+        }
+
+        .tab.active {
+            color: #fff;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        pre {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            overflow-x: auto;
+            color: #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>工作流配置管理</h1>
+            <div style="display: flex; gap: 15px;">
+                <button class="btn btn-secondary" onclick="window.location.href='/'">
+                    <span>🏠</span> 返回首页
+                </button>
+                <button class="btn" id="saveConfigBtn">
+                    <span>💾</span> 保存所有配置
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-container">
+            <div class="tab active" data-tab="whisper-settings">Whisper API 设置</div>
+            <div class="tab" data-tab="workflows">工作流管理</div>
+            <div class="tab" data-tab="json-editor">JSON 编辑器</div>
+        </div>
+
+        <div class="tab-content active" id="whisper-settings">
+            <div class="section">
+                <div class="section-title">
+                    <span>🎙️</span> Whisper API 设置
+                </div>
+                <div class="form-group">
+                    <label for="whisperApiUrl">API URL:</label>
+                    <input type="text" id="whisperApiUrl" placeholder="https://whisper.gaia.domains/v1/audio/transcriptions">
+                </div>
+                <div class="form-group">
+                    <label for="whisperApiKey">API Key:</label>
+                    <input type="text" id="whisperApiKey" placeholder="Enter your API key">
+                </div>
+                <button class="btn" id="testWhisperBtn">
+                    <span>🔍</span> 测试连接
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-content" id="workflows">
+            <div class="section">
+                <div class="section-title">
+                    <span>🔄</span> 工作流管理
+                </div>
+
+                <div class="workflows-container" id="workflowsContainer">
+                    <!-- 工作流列表将通过JavaScript动态生成 -->
+                </div>
+
+                <div class="add-workflow-btn" id="addWorkflowBtn">
+                    <span style="font-size: 1.5rem;">+</span>
+                    <span>添加新工作流</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="json-editor">
+            <div class="section">
+                <div class="section-title">
+                    <span>📝</span> 原始JSON编辑器
+                </div>
+                <div class="code-editor">
+                    <textarea id="jsonEditor" style="min-height: 400px; font-family: monospace;"></textarea>
+                    <button class="expand-editor" title="展开编辑器">⤢</button>
+                </div>
+                <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+                    <button class="btn btn-secondary" id="formatJsonBtn">
+                        <span>🔧</span> 格式化JSON
+                    </button>
+                    <button class="btn" id="saveJsonBtn">
+                        <span>💾</span> 保存JSON
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工作流编辑模态框 -->
+    <div class="modal" id="workflowModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="workflowModalTitle">编辑工作流</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="workflowForm">
+                    <input type="hidden" id="workflowIndex" value="-1">
+                    <div class="form-group">
+                        <label for="workflowName">工作流名称:</label>
+                        <input type="text" id="workflowName" required placeholder="例如：会议摘要">
+                    </div>
+                    <div class="form-group">
+                        <label for="workflowDesc">描述:</label>
+                        <input type="text" id="workflowDesc" placeholder="简要描述此工作流的功能">
+                    </div>
+                    <div class="form-group">
+                        <label for="workflowInputType">输入类型:</label>
+                        <select id="workflowInputType">
+                            <option value="text">文本 (转写结果)</option>
+                            <option value="audio">音频 (原始录音)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="workflowApiEndpoint">API端点:</label>
+                        <input type="text" id="workflowApiEndpoint" placeholder="https://api.example.com/endpoint">
+                    </div>
+                    <div class="form-group">
+                        <label for="workflowApiKey">API密钥:</label>
+                        <input type="text" id="workflowApiKey" placeholder="API密钥 (可选)">
+                    </div>
+                    <div class="form-group" id="promptFormGroup">
+                        <label for="workflowPrompt">自定义提示词:</label>
+                        <textarea id="workflowPrompt" placeholder="为AI提供的系统提示词 (用于文本类型工作流)"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelWorkflowBtn">取消</button>
+                <button class="btn" id="saveWorkflowBtn">保存工作流</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div class="modal" id="confirmDeleteModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">确认删除</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除此工作流吗？此操作无法撤销。</p>
+                <p style="margin-top: 10px; font-weight: bold;" id="deleteWorkflowName"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelDeleteBtn">取消</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JSON编辑器全屏模态框 -->
+    <div class="modal" id="fullscreenEditorModal">
+        <div class="modal-content" style="width: 95%; max-width: 1200px;">
+            <div class="modal-header">
+                <h2 class="modal-title">编辑JSON配置</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <textarea id="fullscreenJsonEditor" style="width: 100%; height: 70vh; font-family: monospace; padding: 15px;"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelFullscreenEdit">取消</button>
+                <button class="btn" id="formatFullscreenJsonBtn">格式化</button>
+                <button class="btn" id="applyFullscreenEdit">应用更改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 全局变量存储配置
+        let config = {
+            whisper_api: {
+                url: "",
+                api_key: ""
+            },
+            workflows: []
+        };
+        let currentWorkflowIndex = -1;
+
+        // DOM加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化标签页切换
+            initTabs();
+
+            // 加载配置
+            loadConfig();
+
+            // 初始化表单事件
+            initFormEvents();
+
+            // 初始化模态框
+            initModals();
+        });
+
+        // 初始化标签页
+        function initTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+
+                    // 移除所有激活状态
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                    // 激活当前标签
+                    this.classList.add('active');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+        }
+
+        // 加载配置
+        function loadConfig() {
+            showToast('加载配置中...', 'info');
+
+            fetch('/get_full_config')
+                .then(response => response.json())
+                .then(data => {
+                    config = data;
+                    updateUI();
+                    showToast('配置已加载', 'success');
+                })
+                .catch(error => {
+                    console.error('Error loading config:', error);
+                    showToast('加载配置失败', 'error');
+                });
+        }
+
+        // 更新UI显示当前配置
+        function updateUI() {
+            // 更新Whisper设置
+            document.getElementById('whisperApiUrl').value = config.whisper_api.url || '';
+            document.getElementById('whisperApiKey').value = config.whisper_api.api_key || '';
+
+            // 更新工作流列表
+            updateWorkflowsList();
+
+            // 更新JSON编辑器
+            document.getElementById('jsonEditor').value = JSON.stringify(config, null, 2);
+        }
+
+        // 更新工作流列表
+        function updateWorkflowsList() {
+            const container = document.getElementById('workflowsContainer');
+            container.innerHTML = '';
+
+            if (!config.workflows || config.workflows.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:30px;color:#999;">暂无工作流，点击下方按钮添加</div>';
+                return;
+            }
+
+            config.workflows.forEach((workflow, index) => {
+                const item = document.createElement('div');
+                item.className = 'workflow-item';
+                item.innerHTML = `
+                    <div class="workflow-header">
+                        <div class="workflow-title">${workflow.name || '未命名工作流'}</div>
+                        <div class="workflow-controls">
+                            <button class="btn-icon btn-edit" title="编辑" data-index="${index}">✏️</button>
+                            <button class="btn-icon btn-delete" title="删除" data-index="${index}">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="workflow-collapsed-content">
+                        <div>${workflow.description || '无描述'}</div>
+                        <div>类型：${workflow.input_type === 'audio' ? '音频处理' : '文本处理'}</div>
+                        <div>API：${workflow.api_endpoint || '未设置'}</div>
+                    </div>
+                `;
+
+                // 添加编辑事件
+                item.querySelector('.btn-edit').addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    openWorkflowModal(index);
+                });
+
+                // 添加删除事件
+                item.querySelector('.btn-delete').addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    openDeleteConfirmation(index);
+                });
+
+                container.appendChild(item);
+            });
+        }
+
+        // 初始化表单事件
+        function initFormEvents() {
+            // 保存配置按钮
+            document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
+
+            // 添加工作流按钮
+            document.getElementById('addWorkflowBtn').addEventListener('click', () => openWorkflowModal());
+
+            // 保存工作流按钮
+            document.getElementById('saveWorkflowBtn').addEventListener('click', saveWorkflow);
+
+            // 确认删除按钮
+            document.getElementById('confirmDeleteBtn').addEventListener('click', deleteWorkflow);
+
+            // 格式化JSON按钮
+            document.getElementById('formatJsonBtn').addEventListener('click', formatJson);
+
+            // 保存JSON按钮
+            document.getElementById('saveJsonBtn').addEventListener('click', saveJsonConfig);
+
+            // 输入类型变更事件
+            document.getElementById('workflowInputType').addEventListener('change', function() {
+                const promptGroup = document.getElementById('promptFormGroup');
+                promptGroup.style.display = this.value === 'text' ? 'block' : 'none';
+            });
+
+            // 展开JSON编辑器
+            document.querySelector('.expand-editor').addEventListener('click', openFullscreenEditor);
+
+            // 全屏编辑器按钮
+            document.getElementById('formatFullscreenJsonBtn').addEventListener('click', formatFullscreenJson);
+            document.getElementById('applyFullscreenEdit').addEventListener('click', applyFullscreenEdit);
+
+            // 测试Whisper连接
+            document.getElementById('testWhisperBtn').addEventListener('click', testWhisperConnection);
+        }
+
+        // 初始化模态框
+        function initModals() {
+            // 工作流模态框
+            const workflowModal = document.getElementById('workflowModal');
+            document.querySelector('#workflowModal .close-modal').addEventListener('click', () => {
+                workflowModal.classList.remove('show');
+            });
+            document.getElementById('cancelWorkflowBtn').addEventListener('click', () => {
+                workflowModal.classList.remove('show');
+            });
+
+            // 删除确认模态框
+            const deleteModal = document.getElementById('confirmDeleteModal');
+            document.querySelector('#confirmDeleteModal .close-modal').addEventListener('click', () => {
+                deleteModal.classList.remove('show');
+            });
+            document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+                deleteModal.classList.remove('show');
+            });
+
+            // 全屏编辑器模态框
+            const editorModal = document.getElementById('fullscreenEditorModal');
+            document.querySelector('#fullscreenEditorModal .close-modal').addEventListener('click', () => {
+                editorModal.classList.remove('show');
+            });
+            document.getElementById('cancelFullscreenEdit').addEventListener('click', () => {
+                editorModal.classList.remove('show');
+            });
+        }
+
+        // 打开工作流编辑模态框
+        function openWorkflowModal(index = -1) {
+            currentWorkflowIndex = index;
+            const modal = document.getElementById('workflowModal');
+            const form = document.getElementById('workflowForm');
+            const title = document.getElementById('workflowModalTitle');
+
+            // 重置表单
+            form.reset();
+
+            if (index >= 0 && config.workflows[index]) {
+                // 编辑现有工作流
+                const workflow = config.workflows[index];
+                title.textContent = '编辑工作流';
+                document.getElementById('workflowIndex').value = index;
+                document.getElementById('workflowName').value = workflow.name || '';
+                document.getElementById('workflowDesc').value = workflow.description || '';
+                document.getElementById('workflowInputType').value = workflow.input_type || 'text';
+                document.getElementById('workflowApiEndpoint').value = workflow.api_endpoint || '';
+                document.getElementById('workflowApiKey').value = workflow.api_key || '';
+                document.getElementById('workflowPrompt').value = workflow.custom_prompt || '';
+            } else {
+                // 添加新工作流
+                title.textContent = '添加工作流';
+                document.getElementById('workflowIndex').value = -1;
+            }
+
+            // 根据输入类型显示/隐藏提示词
+            const inputType = document.getElementById('workflowInputType').value;
+            document.getElementById('promptFormGroup').style.display = inputType === 'text' ? 'block' : 'none';
+
+            modal.classList.add('show');
+        }
+
+        // 保存工作流
+        function saveWorkflow() {
+            const index = parseInt(document.getElementById('workflowIndex').value);
+            const name = document.getElementById('workflowName').value.trim();
+
+            if (!name) {
+                showToast('工作流名称不能为空', 'error');
+                return;
+            }
+
+            const workflow = {
+                name: name,
+                description: document.getElementById('workflowDesc').value.trim(),
+                input_type: document.getElementById('workflowInputType').value,
+                api_endpoint: document.getElementById('workflowApiEndpoint').value.trim(),
+                api_key: document.getElementById('workflowApiKey').value.trim()
+            };
+
+            // 只有文本类型工作流才添加提示词
+            if (workflow.input_type === 'text') {
+                workflow.custom_prompt = document.getElementById('workflowPrompt').value.trim();
+            }
+
+            if (index >= 0) {
+                // 更新现有工作流
+                config.workflows[index] = workflow;
+            } else {
+                // 添加新工作流
+                if (!config.workflows) {
+                    config.workflows = [];
+                }
+                config.workflows.push(workflow);
+            }
+
+            // 更新UI
+            updateWorkflowsList();
+            document.getElementById('jsonEditor').value = JSON.stringify(config, null, 2);
+
+            // 关闭模态框
+            document.getElementById('workflowModal').classList.remove('show');
+
+            showToast('工作流已保存', 'success');
+        }
+
+        // 打开删除确认对话框
+        function openDeleteConfirmation(index) {
+            if (index < 0 || !config.workflows[index]) return;
+
+            currentWorkflowIndex = index;
+            const workflow = config.workflows[index];
+            document.getElementById('deleteWorkflowName').textContent = workflow.name || '未命名工作流';
+            document.getElementById('confirmDeleteModal').classList.add('show');
+        }
+
+        // 删除工作流
+        function deleteWorkflow() {
+            if (currentWorkflowIndex < 0 || !config.workflows[currentWorkflowIndex]) return;
+
+            config.workflows.splice(currentWorkflowIndex, 1);
+
+            // 更新UI
+            updateWorkflowsList();
+            document.getElementById('jsonEditor').value = JSON.stringify(config, null, 2);
+
+            // 关闭模态框
+            document.getElementById('confirmDeleteModal').classList.remove('show');
+
+            showToast('工作流已删除', 'success');
+        }
+
+        // 格式化JSON
+        function formatJson() {
+            try {
+                const jsonStr = document.getElementById('jsonEditor').value;
+                const jsonObj = JSON.parse(jsonStr);
+                document.getElementById('jsonEditor').value = JSON.stringify(jsonObj, null, 2);
+                showToast('JSON已格式化', 'success');
+            } catch (error) {
+                showToast('JSON格式错误: ' + error.message, 'error');
+            }
+        }
+
+        // 保存JSON配置
+        function saveJsonConfig() {
+            try {
+                const jsonStr = document.getElementById('jsonEditor').value;
+                config = JSON.parse(jsonStr);
+
+                // 验证基本结构
+                if (!config.whisper_api) config.whisper_api = {};
+                if (!config.workflows) config.workflows = [];
+
+                // 更新UI
+                updateUI();
+                showToast('JSON配置已应用，点击"保存所有配置"提交到服务器', 'success');
+            } catch (error) {
+                showToast('JSON格式错误: ' + error.message, 'error');
+            }
+        }
+
+        // 保存配置到服务器
+        function saveConfig() {
+            // 首先更新Whisper配置
+            config.whisper_api.url = document.getElementById('whisperApiUrl').value.trim();
+            config.whisper_api.api_key = document.getElementById('whisperApiKey').value.trim();
+
+            // 显示保存中状态
+            const saveBtn = document.getElementById('saveConfigBtn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<span class="loading-spinner"></span> 保存中...';
+            saveBtn.disabled = true;
+
+            fetch('/update_full_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('配置已成功保存到服务器', 'success');
+                } else {
+                    showToast('保存失败: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving config:', error);
+                showToast('保存配置出错: ' + error.message, 'error');
+            })
+            .finally(() => {
+                // 恢复按钮状态
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            });
+        }
+
+        // 打开全屏JSON编辑器
+        function openFullscreenEditor() {
+            const modal = document.getElementById('fullscreenEditorModal');
+            document.getElementById('fullscreenJsonEditor').value = document.getElementById('jsonEditor').value;
+            modal.classList.add('show');
+        }
+
+        // 格式化全屏编辑器的JSON
+        function formatFullscreenJson() {
+            try {
+                const jsonStr = document.getElementById('fullscreenJsonEditor').value;
+                const jsonObj = JSON.parse(jsonStr);
+                document.getElementById('fullscreenJsonEditor').value = JSON.stringify(jsonObj, null, 2);
+                showToast('JSON已格式化', 'success');
+            } catch (error) {
+                showToast('JSON格式错误: ' + error.message, 'error');
+            }
+        }
+
+        // 应用全屏编辑器的更改
+        function applyFullscreenEdit() {
+            try {
+                const jsonStr = document.getElementById('fullscreenJsonEditor').value;
+                const newConfig = JSON.parse(jsonStr);
+
+                // 应用更改
+                document.getElementById('jsonEditor').value = jsonStr;
+                config = newConfig;
+                updateUI();
+
+                // 关闭模态框
+                document.getElementById('fullscreenEditorModal').classList.remove('show');
+                showToast('JSON配置已应用，点击"保存所有配置"提交到服务器', 'success');
+            } catch (error) {
+                showToast('JSON格式错误: ' + error.message, 'error');
+            }
+        }
+
+        // 测试Whisper连接
+        function testWhisperConnection() {
+            const url = document.getElementById('whisperApiUrl').value.trim();
+            const apiKey = document.getElementById('whisperApiKey').value.trim();
+
+            if (!url) {
+                showToast('请输入API URL', 'error');
+                return;
+            }
+
+            const testBtn = document.getElementById('testWhisperBtn');
+            const originalText = testBtn.innerHTML;
+            testBtn.innerHTML = '<span class="loading-spinner"></span> 测试中...';
+            testBtn.disabled = true;
+
+            // 简单测试连接，只验证URL是否可访问
+            fetch(url, {
+                method: 'HEAD',
+                headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
+            })
+            .then(response => {
+                if (response.ok) {
+                    showToast('连接成功！服务器可访问', 'success');
+                } else {
+                    showToast(`连接失败: 状态码 ${response.status}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error testing connection:', error);
+                showToast('连接测试失败: ' + error.message, 'error');
+            })
+            .finally(() => {
+                // 恢复按钮状态
+                testBtn.innerHTML = originalText;
+                testBtn.disabled = false;
+            });
+        }
+
+        // 显示通知
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast';
+
+            if (type === 'error') {
+                toast.classList.add('error');
+            }
+
+            toast.classList.add('show');
+
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+

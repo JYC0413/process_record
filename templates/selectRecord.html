@@ -30,6 +30,9 @@
         .header-container {
             position: relative;
             margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         h1 {
@@ -39,6 +42,96 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        /* 设置按钮样式 */
+        .settings-btn {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .settings-btn:hover {
+            color: #fff;
+            transform: translateY(-50%) rotate(30deg);
+        }
+
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            overflow: auto;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1f1f3f 0%, #1a1a2e 100%);
+            margin: 10% auto;
+            padding: 30px;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .close-modal:hover,
+        .close-modal:focus {
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .modal-header {
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #fff;
+        }
+
+        .success-message {
+            background: rgba(39, 174, 96, 0.2);
+            border-left: 4px solid #27ae60;
+            padding: 10px 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            display: none;
         }
 
         .section {
@@ -91,7 +184,7 @@
             gap: 8px;
         }
 
-        .tab-btn {
+        .tab-btn-header, .tab-btn {
             background: transparent;
             border: none;
             color: rgba(255, 255, 255, 0.6);
@@ -110,12 +203,12 @@
             position: relative;
         }
 
-        .tab-btn:hover {
+        .tab-btn-header:hover, .tab-btn:hover {
             background: rgba(255, 255, 255, 0.05);
             color: rgba(255, 255, 255, 0.8);
         }
 
-        .tab-btn.active {
+        .tab-btn-header.active, .tab-btn.active {
             background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
             color: #fff;
             box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
@@ -260,14 +353,46 @@
     <div class="container">
         <div class="header-container">
             <h1>Meeting Audio Processing</h1>
+            <div style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; gap: 10px;">
+                <button id="settingsBtn" class="settings-btn" title="Settings">⚙️</button>
+            </div>
+        </div>
+
+        <!-- 设置模态框 -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="close-modal">&times;</span>
+                    <h2>Settings</h2>
+                </div>
+                <div class="modal-body">
+                    <form id="settingsForm">
+                        <div class="form-group">
+                            <label>Whisper API URL:</label>
+                            <input type="text" id="whisperApiUrl" name="whisper_api_url" placeholder="https://whisper.gaia.domains/v1/audio/transcriptions" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                        </div>
+                        <div class="form-group">
+                            <label>Whisper API Key:</label>
+                            <input type="text" id="whisperApiKey" name="whisper_api_key" placeholder="Enter API Key" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                        </div>
+                        <div class="btn-container">
+                            <button type="submit" class="btn" id="saveSettingsBtn">Save Settings</button>
+                            <div class="loader" id="settingsLoader" style="display:none;"></div>
+                        </div>
+                    </form>
+                    <div id="settingsSaved" class="success-message">
+                        Settings saved successfully! Changes will apply to all new requests.
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="tab-container">
-            <button class="tab-btn active" onclick="openTab(event, 'downloadTab')">
+            <button class="tab-btn-header active" onclick="openTab(event, 'downloadTab')">
                 <span class="tab-icon">🎧</span>
                 Download Audio
             </button>
-            <button class="tab-btn" onclick="openTab(event, 'workflowTab')">
+            <button class="tab-btn-header" onclick="openTab(event, 'workflowTab')">
                 <span class="tab-icon">🔄</span>
                 Send to Workflow
             </button>
@@ -302,7 +427,7 @@
                     <div class="section-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">🔄</div>
                     <h2>Send Merged Audio to Workflow</h2>
                 </div>
-                <form id="workflowForm" method="post" action="/workflow">
+                <form id="workflowForm" method="post">
                     <div class="form-group">
                         <label>Start Time:</label>
                         <input type="datetime-local" name="start_time" required step="1">
@@ -312,81 +437,105 @@
                         <input type="datetime-local" name="end_time" required step="1">
                     </div>
 
-                    <!-- 工作流选择部分 -->
+                    <!-- 处理类型选择 -->
                     <div class="form-group">
-                        <label for="workflowSelect">Select Workflow:</label>
-                        <select id="workflowSelect" name="selected_workflow" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                            <option value="">-- Select a workflow --</option>
-                        </select>
-                        <div id="workflowDescription" style="margin-top:8px;font-size:0.9rem;color:#b0b0b0;"></div>
+                        <label>Processing Type:</label>
+                        <div class="tab-container" style="margin-bottom:15px;">
+                            <button type="button" class="tab-btn active" id="processAudio">
+                                <span class="tab-icon">🔊</span>
+                                Process Audio Directly
+                            </button>
+                            <button type="button" class="tab-btn" id="processText">
+                                <span class="tab-icon">📝</span>
+                                Process Transcript
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- 工作流自定义API地址 (仅当选择自定义API工作流时显示) -->
-                    <div id="workflowApiUrlSection" style="display:none;">
+                    <!-- 音频处理流程 (默认显示) -->
+                    <div id="audioProcessSection">
                         <div class="form-group">
-                            <label for="workflowApiUrl">API URL:</label>
-                            <input type="text" id="workflowApiUrl" name="custom_api_url" placeholder="http://your-api/handle" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                        </div>
-                    </div>
-
-                    <!-- 是否需要转录 -->
-                    <div class="form-group" id="needTranscribeSection">
-                        <div style="display:flex;align-items:center;background:rgba(255,255,255,0.05);border-radius:10px;padding:12px 16px;">
-                            <input type="checkbox" id="needTranscribe" name="need_transcribe" checked style="margin-right:10px;">
-                            <label for="needTranscribe" style="margin:0">
-                                Transcribe audio before processing
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="btn-container" id="workflowStartBtn">
-                        <button type="button" class="btn" id="btnStartWorkflow">Start Workflow</button>
-                        <div class="loader" id="workflowLoader"></div>
-                    </div>
-
-                    <!-- 原有步骤按钮 (作为备选方案) -->
-                    <div class="btn-container" id="workflowStep1Btns" style="display:none;">
-                        <button type="button" class="btn" id="btnTranscribe">Recognize Subtitles</button>
-                        <button type="button" class="btn" id="btnSkip">Skip</button>
-                    </div>
-
-                    <!-- Step 2: API input when skipping transcription -->
-                    <div id="skipApiSection" style="display:none;">
-                        <div class="form-group">
-                            <label for="customApiUrl">Custom API address:</label>
-                            <input type="text" id="customApiUrl" name="custom_api_url" placeholder="http://your-api/handle" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                        </div>
-                        <div class="btn-container">
-                            <button type="button" class="btn" id="btnProcessSkip">Direct Audio Processing</button>
-                        </div>
-                    </div>
-
-                    <!-- Step 2: Show after recognition -->
-                    <div id="transcribeSection" style="display:none;">
-                        <div class="form-group">
-                            <label for="transcribeTextarea">Recognition Result (editable):</label>
-                            <textarea id="transcribeTextarea" style="min-height:120px;"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="processType">Processing Type:</label>
-                            <select name="process_type" id="processType" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                                <option value="summary">Summary</option>
-                                <option value="custom_api">Custom API Processing</option>
+                            <label for="audioWorkflowSelect">Select Audio Workflow:</label>
+                            <select id="audioWorkflowSelect" name="selected_workflow" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                                <option value="">-- Select a workflow --</option>
                             </select>
+                            <div id="audioWorkflowDescription" style="margin-top:8px;font-size:0.9rem;color:#b0b0b0;"></div>
                         </div>
-                        <div class="form-group" id="customPromptGroup" style="display:none;">
-                            <label for="customPrompt">Custom Prompt (optional):</label>
-                            <textarea name="custom_prompt" id="customPrompt" placeholder="Enter a custom prompt for the AI..."></textarea>
+
+                        <!-- 自定义API URL (音频) -->
+                        <div id="audioApiUrlSection" style="display:none;">
+                            <div class="form-group">
+                                <label for="audioApiUrl">API URL:</label>
+                                <input type="text" id="audioApiUrl" name="audio_api_url" placeholder="http://your-api/handle" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                            </div>
+                            <!-- 添加API Key输入字段 -->
+                            <div class="form-group">
+                                <label for="audioApiKey">API Key (optional):</label>
+                                <input type="text" id="audioApiKey" name="audio_api_key" placeholder="Your API Key" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                            </div>
                         </div>
-                        <div class="form-group" id="customApiGroup" style="display:none;">
-                            <label for="customApiUrl2">Custom API address:</label>
-                            <input type="text" id="customApiUrl2" name="custom_api_url2" placeholder="http://your-api/handle" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                        </div>
+
                         <div class="btn-container">
-                            <button type="button" class="btn" id="btnProcessTranscribe">Process</button>
+                            <button type="button" class="btn" id="btnStartAudioWorkflow">Start Audio Processing</button>
+                            <div class="loader" id="audioProcessLoader" style="display:none;"></div>
                         </div>
                     </div>
+
+                    <!-- 文本处理流程 (默认隐藏) -->
+                    <div id="textProcessSection" style="display:none;">
+                        <div class="form-group" id="transcribeStatusSection">
+                            <div class="btn-container">
+                                <button type="button" class="btn" id="btnStartTranscription">Start Transcription</button>
+                            </div>
+                        </div>
+
+                        <!-- 转录结果部分 (开始隐藏) -->
+                        <div id="transcribeResultSection" style="display:none;">
+                            <div class="form-group">
+                                <label for="transcribeTextarea">Recognition Result (editable):</label>
+                                <textarea id="transcribeTextarea" name="transcript" style="min-height:120px;"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="textWorkflowSelect">Select Text Workflow:</label>
+                                <select id="textWorkflowSelect" name="selected_workflow" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                                    <option value="">-- Select a workflow --</option>
+                                </select>
+                                <div id="textWorkflowDescription" style="margin-top:8px;font-size:0.9rem;color:#b0b0b0;"></div>
+                            </div>
+
+                            <!-- 自定义API URL (文本) -->
+                            <div id="textApiUrlSection" style="display:none;">
+                                <div class="form-group">
+                                    <label for="textApiUrl">API URL:</label>
+                                    <input type="text" id="textApiUrl" name="text_api_url" placeholder="http://your-api/handle" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                                </div>
+                                <!-- 添加API Key输入字段 -->
+                                <div class="form-group">
+                                    <label for="textApiKey">API Key (optional):</label>
+                                    <input type="text" id="textApiKey" name="text_api_key" placeholder="Your API Key" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                                </div>
+                            </div>
+
+                            <!-- 自定义提示词部分 -->
+                            <div id="customPromptSection" style="display:none;">
+                                <div class="form-group">
+                                    <label for="customPrompt">Custom Prompt:</label>
+                                    <textarea name="custom_prompt" id="customPrompt" placeholder="Enter a custom prompt for the AI..."></textarea>
+                                </div>
+                            </div>
+
+                            <div class="btn-container">
+                                <button type="button" class="btn" id="btnStartTextWorkflow">Process Text</button>
+                                <div class="loader" id="textProcessLoader" style="display:none;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="input_type" id="inputTypeField" value="audio">
                 </form>
+
+                <!-- 进度条和结果显示部分 -->
                 <div id="workflowProgressBar" style="display:none;margin-top:20px;">
                     <div style="background:#222;border-radius:8px;overflow:hidden;">
                         <div id="workflowProgressInner" style="height:18px;width:0%;background:linear-gradient(90deg,#667eea,#764ba2);transition:width 0.3s;"></div>
@@ -399,140 +548,274 @@
     </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
+        // 设置模态框功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取模态框元素
+            const modal = document.getElementById('settingsModal');
+            const btn = document.getElementById('settingsBtn');
+            const closeBtn = document.querySelector('.close-modal');
+            const settingsForm = document.getElementById('settingsForm');
+            const settingsSaved = document.getElementById('settingsSaved');
+            const whisperApiUrl = document.getElementById('whisperApiUrl');
+            const whisperApiKey = document.getElementById('whisperApiKey');
+
+            // 当用户点击设置按钮时，打开模态框
+            btn.onclick = function() {
+                // 打开模态框前加载当前设置
+                loadCurrentSettings();
+                modal.style.display = "block";
+            }
+
+            // 当用户点击 X 按钮时，关闭模态框
+            closeBtn.onclick = function() {
+                modal.style.display = "none";
+                // 隐藏成功消息
+                settingsSaved.style.display = "none";
+            }
+
+            // 当用户点击模态框外部时，关闭模态框
+            window.onclick = function(event) {
+                if (event.target === modal) {
+                    modal.style.display = "none";
+                    // 隐藏成功消息
+                    settingsSaved.style.display = "none";
+                }
+            }
+
+            // 加载当前设置
+            function loadCurrentSettings() {
+                fetch('/get_config')
+                    .then(response => response.json())
+                    .then(data => {
+                        const whisperConfig = data.whisper_api || {};
+                        whisperApiUrl.value = whisperConfig.url || "";
+                        whisperApiKey.value = whisperConfig.api_key || "";
+                    })
+                    .catch(error => {
+                        console.error('Error loading settings:', error);
+                    });
+            }
+
+            // 保存设置
+            settingsForm.onsubmit = function(e) {
+                e.preventDefault();
+
+                // 显示加载指示器
+                document.getElementById('settingsLoader').style.display = 'block';
+
+                const updatedConfig = {
+                    whisper_api: {
+                        url: whisperApiUrl.value.trim() || "https://whisper.gaia.domains/v1/audio/transcriptions",
+                        api_key: whisperApiKey.value.trim() || ""
+                    }
+                };
+
+                fetch('/update_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updatedConfig)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // 隐藏加载指示器
+                    document.getElementById('settingsLoader').style.display = 'none';
+
+                    if (data.status === "success") {
+                        // 显示成功消息
+                        settingsSaved.style.display = "block";
+
+                        // 3秒后自动隐藏成功消息
+                        setTimeout(() => {
+                            settingsSaved.style.display = "none";
+                        }, 3000);
+                    } else {
+                        alert("Failed to save settings: " + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving settings:', error);
+                    document.getElementById('settingsLoader').style.display = 'none';
+                    alert("An error occurred while saving settings");
+                });
+            }
+        });
+
         function openTab(evt, tabName) {
             let i, tabcontent, tablinks;
             tabcontent = document.getElementsByClassName("tab-content");
             for (i = 0; i < tabcontent.length; i++) {
                 tabcontent[i].style.display = "none";
             }
-            tablinks = document.getElementsByClassName("tab-btn");
+            tablinks = document.getElementsByClassName("tab-btn-header");
             for (i = 0; i < tablinks.length; i++) {
                 tablinks[i].className = tablinks[i].className.replace(" active", "");
             }
             document.getElementById(tabName).style.display = "block";
             evt.currentTarget.className += " active";
+
+            // 在切换标签页时同步时间选择器
+            if (tabName === "downloadTab") {
+                // 从工作流标签页复制时间到下载标签页
+                const workflowStartTime = document.querySelector('#workflowTab input[name="start_time"]').value;
+                const workflowEndTime = document.querySelector('#workflowTab input[name="end_time"]').value;
+                document.querySelector('#downloadTab input[name="start_time"]').value = workflowStartTime;
+                document.querySelector('#downloadTab input[name="end_time"]').value = workflowEndTime;
+            } else if (tabName === "workflowTab") {
+                // 从下载标签页复制时间到工作流标签页
+                const downloadStartTime = document.querySelector('#downloadTab input[name="start_time"]').value;
+                const downloadEndTime = document.querySelector('#downloadTab input[name="end_time"]').value;
+                document.querySelector('#workflowTab input[name="start_time"]').value = downloadStartTime;
+                document.querySelector('#workflowTab input[name="end_time"]').value = downloadEndTime;
+            }
         }
 
-        // 加载工作流列表
+        // 设置处理类型切换按钮的事件处理程序
         document.addEventListener('DOMContentLoaded', function() {
-            const workflowSelect = document.getElementById('workflowSelect');
+            // 处理类型切换
+            document.getElementById('processAudio').addEventListener('click', function(e) {
+                e.preventDefault();
+                document.getElementById('processAudio').classList.add('active');
+                document.getElementById('processText').classList.remove('active');
+                document.getElementById('audioProcessSection').style.display = '';
+                document.getElementById('textProcessSection').style.display = 'none';
+                document.getElementById('inputTypeField').value = 'audio';
+            });
 
+            document.getElementById('processText').addEventListener('click', function(e) {
+                e.preventDefault();
+                document.getElementById('processText').classList.add('active');
+                document.getElementById('processAudio').classList.remove('active');
+                document.getElementById('audioProcessSection').style.display = 'none';
+                document.getElementById('textProcessSection').style.display = '';
+                document.getElementById('inputTypeField').value = 'text';
+            });
+
+            // 加载工作流列表
             fetch('/get_workflows')
                 .then(response => response.json())
                 .then(data => {
                     const workflows = data.workflows || [];
+                    const audioWorkflowSelect = document.getElementById('audioWorkflowSelect');
+                    const textWorkflowSelect = document.getElementById('textWorkflowSelect');
 
-                    // 添加工作流选项
+                    // 清空现有选项
+                    audioWorkflowSelect.innerHTML = '<option value="">-- Select a workflow --</option>';
+                    textWorkflowSelect.innerHTML = '<option value="">-- Select a workflow --</option>';
+
+                    // 分类添加工作流选项
                     workflows.forEach(workflow => {
                         const option = document.createElement('option');
                         option.value = workflow.name;
                         option.textContent = workflow.name;
                         option.dataset.description = workflow.description || '';
                         option.dataset.apiEndpoint = workflow.api_endpoint || '';
+                        option.dataset.apiKey = workflow.api_key || '';
                         option.dataset.inputType = workflow.input_type || 'text';
-                        workflowSelect.appendChild(option);
+                        option.dataset.customPrompt = workflow.custom_prompt || '';
+
+                        // 根据工作流类型添加到不同的选择器
+                        if (workflow.input_type === 'audio') {
+                            audioWorkflowSelect.appendChild(option.cloneNode(true));
+                        } else {
+                            textWorkflowSelect.appendChild(option.cloneNode(true));
+                        }
                     });
                 })
                 .catch(error => {
                     console.error('Error loading workflows:', error);
                 });
 
-            // 监听工作流选择变化
-            workflowSelect.addEventListener('change', function() {
-                const selectedOption = workflowSelect.options[workflowSelect.selectedIndex];
+            // 监听音频工作流选择变化
+            document.getElementById('audioWorkflowSelect').addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
                 const description = selectedOption.dataset.description || '';
-                const inputType = selectedOption.dataset.inputType || 'text';
                 const apiEndpoint = selectedOption.dataset.apiEndpoint || '';
 
                 // 显示工作流描述
-                document.getElementById('workflowDescription').textContent = description;
+                document.getElementById('audioWorkflowDescription').textContent = description;
 
                 // 处理自定义API输入框
-                const workflowApiUrlSection = document.getElementById('workflowApiUrlSection');
+                const audioApiUrlSection = document.getElementById('audioApiUrlSection');
                 if (selectedOption.value.includes('Custom API')) {
-                    workflowApiUrlSection.style.display = '';
-                    document.getElementById('workflowApiUrl').value = apiEndpoint;
+                    audioApiUrlSection.style.display = '';
+                    document.getElementById('audioApiUrl').value = apiEndpoint;
+                    document.getElementById('audioApiKey').value = ''; // 清空API Key
                 } else {
-                    workflowApiUrlSection.style.display = 'none';
-                }
-
-                // 处理是否需要转录
-                const needTranscribeSection = document.getElementById('needTranscribeSection');
-                if (inputType === 'audio') {
-                    document.getElementById('needTranscribe').checked = false;
-                    needTranscribeSection.style.display = 'none';
-                } else {
-                    document.getElementById('needTranscribe').checked = true;
-                    needTranscribeSection.style.display = '';
+                    audioApiUrlSection.style.display = 'none';
                 }
             });
 
-            // 启动工作流按钮点击事件
-            document.getElementById('btnStartWorkflow').addEventListener('click', function() {
-                const startTime = document.getElementById('workflowForm').querySelector('input[name="start_time"]').value;
-                const endTime = document.getElementById('workflowForm').querySelector('input[name="end_time"]').value;
+            // 监听文本工作流选择变化
+            document.getElementById('textWorkflowSelect').addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const description = selectedOption.dataset.description || '';
+                const apiEndpoint = selectedOption.dataset.apiEndpoint || '';
+                const customPrompt = selectedOption.dataset.customPrompt || '';
 
-                if (!startTime || !endTime) {
-                    alert('Please select both start and end times.');
-                    return;
+                // 显示工作流描述
+                document.getElementById('textWorkflowDescription').textContent = description;
+
+                // 处理自定义API输入框和自定义提示词输入框
+                const textApiUrlSection = document.getElementById('textApiUrlSection');
+                const customPromptSection = document.getElementById('customPromptSection');
+
+                if (selectedOption.value.includes('Custom API')) {
+                    textApiUrlSection.style.display = '';
+                    customPromptSection.style.display = 'none';
+                    document.getElementById('textApiUrl').value = apiEndpoint;
+                    document.getElementById('textApiKey').value = ''; // 清空API Key
+                } else if (selectedOption.value.includes('Summary') || selectedOption.value.includes('Chat') || customPrompt) {
+                    textApiUrlSection.style.display = 'none';
+                    customPromptSection.style.display = '';
+                    document.getElementById('customPrompt').value = customPrompt || "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured.";
+                } else {
+                    textApiUrlSection.style.display = 'none';
+                    customPromptSection.style.display = 'none';
                 }
+            });
 
-                const selectedWorkflow = document.getElementById('workflowSelect').value;
-                if (!selectedWorkflow) {
-                    alert('Please select a workflow.');
-                    return;
-                }
+            // 开始转录按钮事件
+            document.getElementById('btnStartTranscription').addEventListener('click', function() {
+                startTranscription();
+            });
 
-                // 准备工作流参数
-                const formData = new FormData(document.getElementById('workflowForm'));
-                formData.set('step', 'transcribe');
+            // 音频处理按钮事件
+            document.getElementById('btnStartAudioWorkflow').addEventListener('click', function() {
+                startAudioWorkflow();
+            });
 
-                // 自定义API工作流
-                if (selectedWorkflow.includes('Custom API')) {
-                    const apiUrl = document.getElementById('workflowApiUrl').value;
-                    if (!apiUrl) {
-                        alert('Please enter an API URL for the custom API workflow.');
-                        return;
-                    }
-                    formData.set('custom_api_url', apiUrl);
-                }
-
-                // 开始处理
-                startWorkflowProcess(formData);
+            // 文本处理按钮事件
+            document.getElementById('btnStartTextWorkflow').addEventListener('click', function() {
+                startTextWorkflow();
             });
         });
 
-        // 工作流处理函数
-        function startWorkflowProcess(formData) {
+        // 开始转录流程 - 使用新的/transcribe接口
+        function startTranscription() {
             resetWorkflowUI();
-            document.getElementById('workflowLoader').style.display = 'block';
-            document.getElementById('workflowProgressBar').style.display = '';
-            document.getElementById('workflowProgressInner').style.width = '0%';
-            document.getElementById('workflowSteps').innerHTML = '';
 
-            // 转换时间格式
-            const startInput = formData.get('start_time');
-            const endInput = formData.get('end_time');
+            const form = document.getElementById('workflowForm');
+            const startTime = form.querySelector('input[name="start_time"]').value;
+            const endTime = form.querySelector('input[name="end_time"]').value;
 
-            function toUTCString(localStr) {
-                const date = new Date(localStr);
-                return date.getUTCFullYear() + '-' +
-                    String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
-                    String(date.getUTCDate()).padStart(2, '0') + 'T' +
-                    String(date.getUTCHours()).padStart(2, '0') + ':' +
-                    String(date.getUTCMinutes()).padStart(2, '0') + ':' +
-                    String(date.getUTCSeconds()).padStart(2, '0');
+            if (!startTime || !endTime) {
+                alert('Please select both start and end times.');
+                return;
             }
 
-            formData.set('start_time', toUTCString(startInput));
-            formData.set('end_time', toUTCString(endInput));
+            document.getElementById('workflowProgressBar').style.display = '';
+
+            const formData = new FormData();
+            formData.set('start_time', toUTCString(startTime));
+            formData.set('end_time', toUTCString(endTime));
 
             const socket = io();
             let steps = [];
-            let totalSteps = 3;
             let currentStep = 0;
 
-            fetch('/workflow', {
+            fetch('/transcribe', {
                 method: 'POST',
                 body: formData
             })
@@ -540,523 +823,194 @@
             .then(data => {
                 const taskId = data.task_id;
 
-                // 监听进度
                 socket.on('workflow_progress', function(msg) {
                     if (!msg || msg.task_id !== taskId) return;
 
                     steps.push(msg.message);
                     currentStep++;
-                    let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
-                    document.getElementById('workflowProgressInner').style.width = percent + '%';
+                    updateProgressBar(steps, currentStep);
 
-                    const ul = document.getElementById('workflowSteps');
-                    ul.innerHTML = '';
-                    steps.forEach(step => {
-                        ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
-                    });
-
-                    // 如果是转录步骤完成
-                    if (msg.step === 'done' && formData.get('step') === 'transcribe') {
-                        if (msg.result) {
-                            // 显示转录结果并准备下一步处理
-                            document.getElementById('transcribeTextarea').value = msg.result;
-                            document.getElementById('transcribeSection').style.display = '';
-                            document.getElementById('workflowLoader').style.display = 'none';
-                            document.getElementById('workflowProgressBar').style.display = 'none';
-                        } else {
-                            // 如果没有结果但转录完成，直接进入处理步骤
-                            continueToProcesing(formData, null, taskId);
-                        }
-                    }
-                    // 如果是处理步骤完成
-                    else if (msg.step === 'done' && formData.get('step') === 'process') {
-                        document.getElementById('workflowResult').style.display = 'block';
-                        renderWorkflowResult(msg.result);
-                        document.getElementById('workflowLoader').style.display = 'none';
+                    if (msg.step === 'done') {
+                        // 转录完成，显示结果
+                        document.getElementById('transcribeTextarea').value = msg.result || '';
+                        document.getElementById('transcribeResultSection').style.display = '';
+                        document.getElementById('transcribeStatusSection').style.display = 'none';
                         document.getElementById('workflowProgressBar').style.display = 'none';
+                        socket.disconnect();
                     }
                 });
             })
             .catch(error => {
                 console.error('Error:', error);
-                document.getElementById('workflowSteps').innerHTML += `<li style="color:#ff5757;">Error: ${error.message}</li>`;
-                document.getElementById('workflowLoader').style.display = 'none';
+                alert('Transcription failed: ' + error);
+                document.getElementById('workflowProgressBar').style.display = 'none';
             });
         }
 
-        // 继续处理函数
-        function continueToProcesing(formData, transcriptText, previousTaskId) {
-            document.getElementById('workflowLoader').style.display = 'block';
-            document.getElementById('workflowProgressBar').style.display = '';
-            document.getElementById('workflowProgressInner').style.width = '0%';
-            document.getElementById('workflowSteps').innerHTML = '';
+        // 开始音频处理工作流 - 使用新的/process_workflow接口
+        function startAudioWorkflow() {
+            resetWorkflowUI();
 
-            const newFormData = new FormData();
-            for(let pair of formData.entries()) {
-                newFormData.append(pair[0], pair[1]);
+            const form = document.getElementById('workflowForm');
+            const startTime = form.querySelector('input[name="start_time"]').value;
+            const endTime = form.querySelector('input[name="end_time"]').value;
+            const selectedWorkflow = document.getElementById('audioWorkflowSelect').value;
+
+            if (!startTime || !endTime) {
+                alert('Please select both start and end times.');
+                return;
             }
 
-            newFormData.set('step', 'process');
-            if (transcriptText) {
-                newFormData.set('transcript', transcriptText);
+            if (!selectedWorkflow) {
+                alert('Please select a workflow.');
+                return;
             }
 
-            fetch('/workflow', {
+            // 显示加载器
+            document.getElementById('audioProcessLoader').style.display = 'block';
+
+            const formData = new FormData();
+            formData.set('start_time', toUTCString(startTime));
+            formData.set('end_time', toUTCString(endTime));
+            formData.set('selected_workflow', selectedWorkflow);
+            formData.set('input_type', 'audio');
+
+            if (selectedWorkflow.includes('Custom API')) {
+                const apiUrl = document.getElementById('audioApiUrl').value;
+                const apiKey = document.getElementById('audioApiKey').value;
+
+                if (!apiUrl) {
+                    alert('Please enter an API URL for the custom API workflow.');
+                    document.getElementById('audioProcessLoader').style.display = 'none';
+                    return;
+                }
+                formData.set('audio_api_url', apiUrl);
+                if (apiKey) {
+                    formData.set('audio_api_key', apiKey);
+                }
+            }
+
+            // 直接使用同步请求处理工作流
+            fetch('/process_workflow', {
                 method: 'POST',
-                body: newFormData
+                body: formData
             })
             .then(response => response.json())
             .then(data => {
-                // 任务已启动，等待socket事件更新
+                document.getElementById('workflowResult').style.display = 'block';
+                renderWorkflowResult(data.result || data);
+                document.getElementById('audioProcessLoader').style.display = 'none';
             })
             .catch(error => {
                 console.error('Error:', error);
-                document.getElementById('workflowSteps').innerHTML += `<li style="color:#ff5757;">Error: ${error.message}</li>`;
-                document.getElementById('workflowLoader').style.display = 'none';
+                document.getElementById('workflowResult').innerText = "Request failed: " + error;
+                document.getElementById('workflowResult').style.display = 'block';
+                document.getElementById('audioProcessLoader').style.display = 'none';
             });
         }
 
-        // 处理转录后继续处理的按钮点击
-        document.getElementById('btnProcessTranscribe').onclick = function() {
-            const formData = new FormData(document.getElementById('workflowForm'));
-            const transcriptText = document.getElementById('transcribeTextarea').value;
-            continueToProcesing(formData, transcriptText);
-        };
+        // 开始文本处理工作流 - 使用新的/process_workflow接口
+        function startTextWorkflow() {
+            resetWorkflowUI();
 
-        document.getElementById('downloadForm').onsubmit = async function(e) {
-            e.preventDefault();
-            document.getElementById('downloadLoader').style.display = 'block';
+            const form = document.getElementById('workflowForm');
+            const startTime = form.querySelector('input[name="start_time"]').value;
+            const endTime = form.querySelector('input[name="end_time"]').value;
+            const selectedWorkflow = document.getElementById('textWorkflowSelect').value;
+            const transcript = document.getElementById('transcribeTextarea').value;
 
-            const form = this;
-            const startInput = form.querySelector('input[name="start_time"]');
-            const endInput = form.querySelector('input[name="end_time"]');
+            if (!startTime || !endTime) {
+                alert('Please select both start and end times.');
+                return;
+            }
+
+            if (!selectedWorkflow) {
+                alert('Please select a workflow.');
+                return;
+            }
+
+            if (!transcript) {
+                alert('Transcript is empty. Please run transcription first.');
+                return;
+            }
+
+            // 显示加载器
+            document.getElementById('textProcessLoader').style.display = 'block';
 
             const formData = new FormData();
-            formData.append('start_time', toUTCString(startInput.value));
-            formData.append('end_time', toUTCString(endInput.value));
+            formData.set('start_time', toUTCString(startTime));
+            formData.set('end_time', toUTCString(endTime));
+            formData.set('selected_workflow', selectedWorkflow);
+            formData.set('transcript', transcript);
+            formData.set('input_type', 'text');
 
-            try {
-                const resp = await fetch('/download', {
-                    method: 'POST',
-                    body: formData
-                });
+            if (selectedWorkflow.includes('Custom API')) {
+                const apiUrl = document.getElementById('textApiUrl').value;
+                const apiKey = document.getElementById('textApiKey').value;
 
-                if (resp.ok) {
-                    const blob = await resp.blob();
-                    // 尝试从header获取文件名
-                    let filename = 'audio.wav';
-                    const disposition = resp.headers.get('Content-Disposition');
-                    if (disposition && disposition.indexOf('filename=') !== -1) {
-                        filename = decodeURIComponent(disposition.split('filename=')[1].replace(/['"]/g, ''));
-                    }
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
-                } else {
-                    alert('下载失败: ' + resp.message);
+                if (!apiUrl) {
+                    alert('Please enter an API URL for the custom API workflow.');
+                    document.getElementById('textProcessLoader').style.display = 'none';
+                    return;
                 }
-            } catch (err) {
-                alert('请求出错: ' + err.message);
-            } finally {
-                document.getElementById('downloadLoader').style.display = 'none';
+                formData.set('text_api_url', apiUrl);
+                if (apiKey) {
+                    formData.set('text_api_key', apiKey);
+                }
+            } else if (document.getElementById('customPromptSection').style.display !== 'none') {
+                const customPrompt = document.getElementById('customPrompt').value;
+                if (customPrompt) {
+                    formData.set('custom_prompt', customPrompt);
+                }
             }
+
+            // 直接使用同步请求处理工作流
+            fetch('/process_workflow', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('workflowResult').style.display = 'block';
+                renderWorkflowResult(data.result || data);
+                document.getElementById('textProcessLoader').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('workflowResult').innerText = "Request failed: " + error;
+                document.getElementById('workflowResult').style.display = 'block';
+                document.getElementById('textProcessLoader').style.display = 'none';
+            });
         }
 
-        // 新UI逻辑
-        let transcribeResult = null;
-        let transcribeTaskId = null;
+        // 更新进度条
+        function updateProgressBar(steps, currentStep) {
+            let totalSteps = Math.max(5, currentStep + 2);
+            let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
+            document.getElementById('workflowProgressInner').style.width = percent + '%';
 
+            const ul = document.getElementById('workflowSteps');
+            ul.innerHTML = '';
+            steps.forEach((step) => {
+                ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
+            });
+        }
+
+        // 重置工作流UI
         function resetWorkflowUI() {
-            document.getElementById('workflowStep1Btns').style.display = 'none';
-            document.getElementById('skipApiSection').style.display = 'none';
-            document.getElementById('transcribeSection').style.display = 'none';
             document.getElementById('workflowResult').style.display = 'none';
             document.getElementById('workflowResult').innerHTML = '';
             document.getElementById('workflowProgressBar').style.display = 'none';
             document.getElementById('workflowProgressInner').style.width = '0%';
             document.getElementById('workflowSteps').innerHTML = '';
-            document.getElementById('workflowLoader').style.display = 'none';
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            resetWorkflowUI();
-            document.getElementById('customPrompt').value = "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured. Follow this format:\n\n1. Title: A short and relevant title for the meeting\n\n2. Summary: A high-level summary of the discussion\n\n3. Key Discussion Points:\n\n* Bullet points covering the main topics discussed\n\n* Include any important decisions made\n\n* Note any action items and who is responsible\n\n4. Next Steps:\n\n* Clearly list the next steps or follow-up items\n\n* Include deadlines (if mentioned) and responsible persons";
-
-            // 处理方式切换
-            document.getElementById('processType').addEventListener('change', function() {
-                if (this.value === 'summary') {
-                    document.getElementById('customPromptGroup').style.display = '';
-                    document.getElementById('customApiGroup').style.display = 'none';
-                    if (!document.getElementById('customPrompt').value) {
-                        document.getElementById('customPrompt').value = "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured. Follow this format:\n\n1. Title: A short and relevant title for the meeting\n\n2. Summary: A high-level summary of the discussion\n\n3. Key Discussion Points:\n\n* Bullet points covering the main topics discussed\n\n* Include any important decisions made\n\n* Note any action items and who is responsible\n\n4. Next Steps:\n\n* Clearly list the next steps or follow-up items\n\n* Include deadlines (if mentioned) and responsible persons";
-                    }
-                } else {
-                    document.getElementById('customPromptGroup').style.display = 'none';
-                    document.getElementById('customApiGroup').style.display = '';
-                }
-            });
-
-            // 保留原有的识别字幕按钮
-            document.getElementById('btnTranscribe').onclick = async function() {
-                resetWorkflowUI();
-                document.getElementById('workflowStep1Btns').style.display = 'none';
-                document.getElementById('workflowLoader').style.display = 'block';
-                document.getElementById('workflowProgressBar').style.display = '';
-                const form = document.getElementById('workflowForm');
-                const formData = new FormData(form);
-                const startInput = form.querySelector('input[name="start_time"]');
-                const endInput = form.querySelector('input[name="end_time"]');
-                function toUTCString(localStr) {
-                    const date = new Date(localStr);
-                    return date.getUTCFullYear() + '-' +
-                        String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
-                        String(date.getUTCDate()).padStart(2, '0') + 'T' +
-                        String(date.getUTCHours()).padStart(2, '0') + ':' +
-                        String(date.getUTCMinutes()).padStart(2, '0') + ':' +
-                        String(date.getUTCSeconds()).padStart(2, '0');
-                }
-                formData.set('start_time', toUTCString(startInput.value));
-                formData.set('end_time', toUTCString(endInput.value));
-                formData.set('step', 'transcribe');
-                formData.set('process_type', 'summary'); // 仅用于后端流程判断
-
-                const socket = io();
-                let steps = [];
-                let totalSteps = 3;
-                let currentStep = 0;
-
-                try {
-                    const resp = await fetch('/workflow', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    const data = await resp.json();
-                    if (!resp.ok) {
-                        throw new Error(data.message);
-                    }
-                    transcribeTaskId = data.task_id;
-                } catch (error) {
-                    document.getElementById('workflowResult').innerText = "Request failed: " + error;
-                    document.getElementById('workflowResult').style.display = 'block';
-                    document.getElementById('workflowLoader').style.display = 'none';
-                    document.getElementById('workflowProgressBar').style.display = 'none';
-                    // 新增：确保loading结束
-                    document.getElementById('workflowLoader').style.display = 'none';
-                    document.getElementById('workflowProgressBar').style.display = 'none';
-                    return;
-                }
-
-                socket.on('workflow_progress', function(msg) {
-                    if (!msg || msg.task_id !== transcribeTaskId) return;
-                    steps.push(msg.message);
-                    currentStep++;
-                    let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
-                    document.getElementById('workflowProgressInner').style.width = percent + '%';
-                    const ul = document.getElementById('workflowSteps');
-                    ul.innerHTML = '';
-                    steps.forEach((step, idx) => {
-                        ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
-                    });
-                    if (msg.step === 'done') {
-                        document.getElementById('workflowLoader').style.display = 'none';
-                        document.getElementById('workflowProgressBar').style.display = 'none';
-                        transcribeResult = msg.result || '';
-                        document.getElementById('transcribeSection').style.display = '';
-                        document.getElementById('transcribeTextarea').value = transcribeResult || '';
-                        document.getElementById('processType').value = 'summary';
-                        document.getElementById('customPromptGroup').style.display = '';
-                        document.getElementById('customApiGroup').style.display = 'none';
-                        socket.disconnect();
-                    }
-                });
-            };
-
-            // 保留原有的跳过识别按钮
-            document.getElementById('btnSkip').onclick = function() {
-                resetWorkflowUI();
-                document.getElementById('workflowStep1Btns').style.display = 'none';
-                document.getElementById('skipApiSection').style.display = '';
-            };
-
-            // 保留跳过识别后处理按钮
-            document.getElementById('btnProcessSkip').onclick = async function() {
-                document.getElementById('workflowResult').style.display = 'none';
-                document.getElementById('workflowResult').innerHTML = '';
-                document.getElementById('workflowLoader').style.display = 'block';
-                document.getElementById('workflowProgressBar').style.display = '';
-                document.getElementById('workflowProgressInner').style.width = '0%';
-                document.getElementById('workflowSteps').innerHTML = '';
-                const form = document.getElementById('workflowForm');
-                const formData = new FormData(form);
-                const startInput = form.querySelector('input[name="start_time"]');
-                const endInput = form.querySelector('input[name="end_time"]');
-                function toUTCString(localStr) {
-                    const date = new Date(localStr);
-                    return date.getUTCFullYear() + '-' +
-                        String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
-                        String(date.getUTCDate()).padStart(2, '0') + 'T' +
-                        String(date.getUTCHours()).padStart(2, '0') + ':' +
-                        String(date.getUTCMinutes()).padStart(2, '0') + ':' +
-                        String(date.getUTCSeconds()).padStart(2, '0');
-                }
-                formData.set('start_time', toUTCString(startInput.value));
-                formData.set('end_time', toUTCString(endInput.value));
-                formData.set('step', 'process');
-                formData.set('process_type', 'custom_api');
-                formData.set('need_transcribe', 'off');
-                formData.set('custom_api_url', document.getElementById('customApiUrl').value);
-
-                const socket = io();
-                let steps = [];
-                let totalSteps = 3;
-                let currentStep = 0;
-                let taskId = null;
-
-                try {
-                    const resp = await fetch('/workflow', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    console.log(resp.ok)
-
-                    const data = await resp.json();
-                    if (!resp.ok) {
-                        throw new Error(data.message);
-                    }
-                    taskId = data.task_id;
-                } catch (error) {
-                    console.log(error)
-                    document.getElementById('workflowResult').innerText = "Request failed: " + error;
-                    document.getElementById('workflowResult').style.display = 'block';
-                    document.getElementById('workflowLoader').style.display = 'none';
-                    document.getElementById('workflowProgressBar').style.display = 'none';
-                    // 新增：确保loading结束
-                    document.getElementById('workflowLoader').style.display = 'none';
-                    document.getElementById('workflowProgressBar').style.display = 'none';
-                    return;
-                }
-
-                socket.on('workflow_progress', function(msg) {
-                    if (!msg || msg.task_id !== taskId) return;
-                    steps.push(msg.message);
-                    currentStep++;
-                    let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
-                    document.getElementById('workflowProgressInner').style.width = percent + '%';
-                    const ul = document.getElementById('workflowSteps');
-                    ul.innerHTML = '';
-                    steps.forEach((step, idx) => {
-                        ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
-                    });
-                    if (msg.step === 'done') {
-                        document.getElementById('workflowResult').style.display = 'block';
-                        renderWorkflowResult(msg.result);
-                        document.getElementById('workflowLoader').style.display = 'none';
-                        document.getElementById('workflowProgressBar').style.display = 'none';
-                        socket.disconnect();
-                    }
-                });
-            };
-
-            // 保留原有的识别后处理按钮
-            document.getElementById('btnProcessTranscribe').onclick = async function() {
-                document.getElementById('workflowResult').style.display = 'none';
-                document.getElementById('workflowResult').innerHTML = '';
-                document.getElementById('workflowLoader').style.display = 'block';
-                document.getElementById('workflowProgressBar').style.display = '';
-                document.getElementById('workflowProgressInner').style.width = '0%';
-                document.getElementById('workflowSteps').innerHTML = '';
-                const form = document.getElementById('workflowForm');
-                const formData = new FormData(form);
-                const startInput = form.querySelector('input[name="start_time"]');
-                const endInput = form.querySelector('input[name="end_time"]');
-                function toUTCString(localStr) {
-                    const date = new Date(localStr);
-                    return date.getUTCFullYear() + '-' +
-                        String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
-                        String(date.getUTCDate()).padStart(2, '0') + 'T' +
-                        String(date.getUTCHours()).padStart(2, '0') + ':' +
-                        String(date.getUTCMinutes()).padStart(2, '0') + ':' +
-                        String(date.getUTCSeconds()).padStart(2, '0');
-                }
-                formData.set('start_time', toUTCString(startInput.value));
-                formData.set('end_time', toUTCString(endInput.value));
-                formData.set('step', 'process');
-                formData.set('transcript', document.getElementById('transcribeTextarea').value);
-                // 处理方式
-                const processType = document.getElementById('processType').value;
-                formData.set('process_type', processType);
-                if (processType === 'summary') {
-                    formData.set('custom_prompt', document.getElementById('customPrompt').value);
-                } else {
-                    formData.set('custom_api_url', document.getElementById('customApiUrl2').value);
-                }
-
-                const socket = io();
-                let steps = [];
-                let totalSteps = 3;
-                let currentStep = 0;
-                let taskId = null;
-
-                try {
-                    const resp = await fetch('/workflow', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    const data = await resp.json();
-                    if (!resp.ok) {
-                        throw new Error(data.message);
-                    }
-                    taskId = data.task_id;
-                } catch (error) {
-                    document.getElementById('workflowResult').innerText = "Request failed: " + error;
-                    document.getElementById('workflowResult').style.display = 'block';
-                    document.getElementById('workflowLoader').style.display = 'none';
-                    document.getElementById('workflowProgressBar').style.display = 'none';
-                    // 新增：确保loading结束
-                    document.getElementById('workflowLoader').style.display = 'none';
-                    document.getElementById('workflowProgressBar').style.display = 'none';
-                    return;
-                }
-
-                socket.on('workflow_progress', function(msg) {
-                    if (!msg || msg.task_id !== taskId) return;
-                    steps.push(msg.message);
-                    currentStep++;
-                    let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
-                    document.getElementById('workflowProgressInner').style.width = percent + '%';
-                    const ul = document.getElementById('workflowSteps');
-                    ul.innerHTML = '';
-                    steps.forEach((step, idx) => {
-                        ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
-                    });
-                    if (msg.step === 'done') {
-                        document.getElementById('workflowResult').style.display = 'block';
-                        renderWorkflowResult(msg.result);
-                        document.getElementById('workflowLoader').style.display = 'none';
-                        document.getElementById('workflowProgressBar').style.display = 'none';
-                        socket.disconnect();
-                    }
-                });
-            };
-        });
-
-        // workflow 类型切换时显示/隐藏相关字段
-        document.addEventListener('DOMContentLoaded', function() {
-            let processType = document.getElementById('processType');
-            let needTranscribeGroup = document.getElementById('needTranscribeGroup');
-            let customPromptGroup = document.getElementById('customPromptGroup');
-
-            function updateFieldsDisplay() {
-                if (processType.value === 'summary') {
-                    needTranscribeGroup.style.display = 'none';
-                    customPromptGroup.style.display = '';
-                    // summary类型设置默认prompt
-                    if (!document.getElementById('customPrompt').value) {
-                        document.getElementById('customPrompt').value = "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured. Follow this format:\n\n1. Title: A short and relevant title for the meeting\n\n2. Summary: A high-level summary of the discussion\n\n3. Key Discussion Points:\n\n* Bullet points covering the main topics讨论\n\n* 包含任何重要的决定\n\n* 注意任何行动项目及其负责人\n\n4. 后续步骤:\n\n* 清楚列出接下来的步骤或跟进事项\n\n* 包含截止日期（如提及）和负责人";
-                    }
-                } else if (processType.value === 'custom_api') {
-                    needTranscribeGroup.style.display = '';
-                    customPromptGroup.style.display = 'none';
-                }
-            }
-            processType.addEventListener('change', updateFieldsDisplay);
-            updateFieldsDisplay();
-        });
-
-        document.getElementById('workflowForm').onsubmit = async function(e) {
-            e.preventDefault();
-            document.getElementById('workflowLoader').style.display = 'block';
-            document.getElementById('workflowResult').innerText = "";
-            document.getElementById('workflowResult').style.display = 'none';
-            document.getElementById('workflowProgressBar').style.display = '';
-            document.getElementById('workflowProgressInner').style.width = '0%';
-            document.getElementById('workflowSteps').innerHTML = '';
-
-            const form = this;
-            const formData = new FormData(this);
-            const startInput = form.querySelector('input[name="start_time"]');
-            const endInput = form.querySelector('input[name="end_time"]');
-
-            function toUTCString(localStr) {
-                const date = new Date(localStr);
-                return date.getUTCFullYear() + '-' +
-                    String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
-                    String(date.getUTCDate()).padStart(2, '0') + 'T' +
-                    String(date.getUTCHours()).padStart(2, '0') + ':' +
-                    String(date.getUTCMinutes()).padStart(2, '0') + ':' +
-                    String(date.getUTCSeconds()).padStart(2, '0');
-            }
-            formData.set('start_time', toUTCString(startInput.value));
-            formData.set('end_time', toUTCString(endInput.value));
-
-            // 启动 socketio 客户端
-            const socket = io();
-
-            // 步骤列表
-            const steps = [];
-            let totalSteps = 5;
-            let currentStep = 0;
-            let taskId = null;
-
-            try {
-                const resp = await fetch('/workflow', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await resp.json();
-                if (!resp.ok) {
-                    throw new Error(data.message);
-                }
-                taskId = data.task_id;
-            } catch (error) {
-                document.getElementById('workflowResult').innerText = "Request failed: " + error;
-                document.getElementById('workflowResult').style.display = 'block';
-                document.getElementById('workflowLoader').style.display = 'none';
-                document.getElementById('workflowProgressBar').style.display = 'none';
-                return;
-            }
-
-            // 监听进度事件
-            socket.on('workflow_progress', function(msg) {
-                if (!msg || msg.task_id !== taskId) return;
-                steps.push(msg.message);
-                currentStep++;
-                let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
-                if (msg.step.startsWith('transcribe_')) {
-                    totalSteps = Math.max(totalSteps, currentStep + 2);
-                    percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
-                }
-                document.getElementById('workflowProgressInner').style.width = percent + '%';
-                const ul = document.getElementById('workflowSteps');
-                ul.innerHTML = '';
-                steps.forEach((step, idx) => {
-                    ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
-                });
-                if (msg.step === 'done') {
-                    document.getElementById('workflowResult').style.display = 'block';
-                    // 动态渲染结果
-                    renderWorkflowResult(msg.result);
-                    document.getElementById('workflowLoader').style.display = 'none';
-                    document.getElementById('workflowProgressBar').style.display = 'none';
-                    socket.disconnect();
-                }
-            });
-        }
-
-        // 动态渲染结果
+        // 渲染工作流结果
         function renderWorkflowResult(result) {
             const container = document.getElementById('workflowResult');
             container.innerHTML = '';
             if (!result) return;
-            // 判断类型
+
             if (typeof result === 'string') {
                 // 链接
                 if (/^https?:\/\/.+/.test(result)) {
@@ -1086,10 +1040,21 @@
             }
         }
 
+        // 格式化时间
+        function toUTCString(localStr) {
+            const date = new Date(localStr);
+            return date.getUTCFullYear() + '-' +
+                String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
+                String(date.getUTCDate()).padStart(2, '0') + 'T' +
+                String(date.getUTCHours()).padStart(2, '0') + ':' +
+                String(date.getUTCMinutes()).padStart(2, '0') + ':' +
+                String(date.getUTCSeconds()).padStart(2, '0');
+        }
+
         function toLocalISOString(date) {
             const pad = n => String(n).padStart(2, '0');
             const year = date.getFullYear();
-            const month = pad(date.getMonth() + 1); // 月份从0开始
+            const month = pad(date.getMonth() + 1);
             const day = pad(date.getDate());
             const hours = pad(date.getHours());
             const minutes = pad(date.getMinutes());
@@ -1098,7 +1063,7 @@
             return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
         }
 
-        // Set default time to current time +/- one hour
+        // 设置默认时间范围
         window.onload = function() {
             const now = new Date();
             const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
@@ -1114,6 +1079,53 @@
                 input.value = toLocalISOString(oneHourLater);
             });
         }
+
+        // 保留与下载相关的表单处理
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('downloadForm').onsubmit = async function(e) {
+                e.preventDefault();
+                document.getElementById('downloadLoader').style.display = 'block';
+
+                const form = this;
+                const startInput = form.querySelector('input[name="start_time"]');
+                const endInput = form.querySelector('input[name="end_time"]');
+
+                const formData = new FormData();
+                formData.append('start_time', toUTCString(startInput.value));
+                formData.append('end_time', toUTCString(endInput.value));
+
+                try {
+                    const resp = await fetch('/download', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (resp.ok) {
+                        const blob = await resp.blob();
+                        // 尝试从header获取文件名
+                        let filename = 'audio.wav';
+                        const disposition = resp.headers.get('Content-Disposition');
+                        if (disposition && disposition.indexOf('filename=') !== -1) {
+                            filename = decodeURIComponent(disposition.split('filename=')[1].replace(/['"]/g, ''));
+                        }
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                    } else {
+                        alert('下载失败: ' + resp.message);
+                    }
+                } catch (err) {
+                    alert('请求出错: ' + err.message);
+                } finally {
+                    document.getElementById('downloadLoader').style.display = 'none';
+                }
+            }
+        });
     </script>
 </body>
 </html>
