@@ -1,42 +1,46 @@
 {
   "whisper_api": {
-    "url": "http://35.238.174.232:9080/v1/audio/transcriptions",
-    "api_key": ""
+    "api_key": "gaia-OTBiYjlmZDEtNTc3OS00MjI5LWI0NDgtZDIxNTNmYjEwZDRj-IYuaA5AxGFTywJWq",
+    "url": "https://whisper.gaia.domains/v1/audio/transcriptions"
   },
   "workflows": [
     {
-      "name": "Meeting Summary",
-      "api_endpoint": "https://0xb2962131564bc854ece7b0f7c8c9a8345847abfb.gaia.domains/v1/chat/completions",
-      "input_type": "text",
+      "api_endpoint": "https://qwen7b.gaia.domains/v1/chat/completions",
+      "api_key": "gaia-OTBiYjlmZDEtNTc3OS00MjI5LWI0NDgtZDIxNTNmYjEwZDRj-IYuaA5AxGFTywJWq",
+      "custom_prompt": "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured. Follow this format:\n\n1. Title: A short and relevant title for the meeting\n\n2. Summary: A high-level summary of the discussion\n\n3. Key Discussion Points:\n\n* Bullet points covering the main topics discussed\n\n* Include any important decisions made\n\n* Note any action items and who is responsible\n\n4. Next Steps:\n\n* Clearly list the next steps or follow-up items\n\n* Include deadlines (if mentioned) and responsible persons",
       "description": "Generate a summary of the meeting",
-      "custom_prompt": "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured. Follow this format:\n\n1. Title: A short and relevant title for the meeting\n\n2. Summary: A high-level summary of the discussion\n\n3. Key Discussion Points:\n\n* Bullet points covering the main topics discussed\n\n* Include any important decisions made\n\n* Note any action items and who is responsible\n\n4. Next Steps:\n\n* Clearly list the next steps or follow-up items\n\n* Include deadlines (if mentioned) and responsible persons"
+      "input_type": "text",
+      "name": "Meeting Summary"
     },
     {
-      "name": "Meeting Minutes",
-      "api_endpoint": "https://0xb2962131564bc854ece7b0f7c8c9a8345847abfb.gaia.domains/v1/chat/completions",
-      "input_type": "text",
+      "api_endpoint": "https://qwen7b.gaia.domains/v1/chat/completions",
+      "api_key": "gaia-OTBiYjlmZDEtNTc3OS00MjI5LWI0NDgtZDIxNTNmYjEwZDRj-IYuaA5AxGFTywJWq",
+      "custom_prompt": "You are a professional meeting secretary. Create detailed meeting minutes from the following transcript. Include:\n\n1. Meeting Title and Date\n2. Attendees (extract from the conversation if possible)\n3. Agenda Items (organized by topic)\n4. Discussions (summarized by topic)\n5. Decisions Made\n6. Action Items (include who is responsible and deadlines)\n7. Next Meeting (if mentioned)",
       "description": "Generate formatted meeting minutes",
-      "custom_prompt": "You are a professional meeting secretary. Create detailed meeting minutes from the following transcript. Include:\n\n1. Meeting Title and Date\n2. Attendees (extract from the conversation if possible)\n3. Agenda Items (organized by topic)\n4. Discussions (summarized by topic)\n5. Decisions Made\n6. Action Items (include who is responsible and deadlines)\n7. Next Meeting (if mentioned)"
+      "input_type": "text",
+      "name": "Meeting Minutes"
     },
     {
-      "name": "Action Items Extractor",
-      "api_endpoint": "https://0xb2962131564bc854ece7b0f7c8c9a8345847abfb.gaia.domains/v1/chat/completions",
-      "input_type": "text",
+      "api_endpoint": "https://qwen7b.gaia.domains/v1/chat/completions",
+      "api_key": "gaia-OTBiYjlmZDEtNTc3OS00MjI5LWI0NDgtZDIxNTNmYjEwZDRj-IYuaA5AxGFTywJWq",
+      "custom_prompt": "You are an AI assistant specialized in extracting action items from meeting transcripts. Review the following transcript and list all action items in this format:\n\n1. [Action]: Brief description of the action item\n   [Owner]: Person responsible (if mentioned)\n   [Due]: Due date or timeline (if mentioned)\n   [Context]: Brief context from the meeting\n\n2. [Action]: ...",
       "description": "Extract action items from the meeting",
-      "custom_prompt": "You are an AI assistant specialized in extracting action items from meeting transcripts. Review the following transcript and list all action items in this format:\n\n1. [Action]: Brief description of the action item\n   [Owner]: Person responsible (if mentioned)\n   [Due]: Due date or timeline (if mentioned)\n   [Context]: Brief context from the meeting\n\n2. [Action]: ..."
-    },
-    {
-      "name": "Custom API (Text)",
-      "api_endpoint": "",
       "input_type": "text",
-      "description": "Send transcript to a custom API endpoint"
+      "name": "Action Items Extractor"
     },
     {
-      "name": "Custom API (Audio)",
       "api_endpoint": "",
+      "api_key": "",
+      "description": "Send transcript to a custom API endpoint",
+      "input_type": "text",
+      "name": "Custom API (Text)"
+    },
+    {
+      "api_endpoint": "",
+      "api_key": "",
+      "description": "Send audio directly to a custom API endpoint",
       "input_type": "audio",
-      "description": "Send audio directly to a custom API endpoint"
+      "name": "Custom API (Audio)"
     }
   ]
 }
-
