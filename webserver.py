@@ -34,7 +34,7 @@ def get_workflows_config():
         return {
             "whisper_api": {
                 "url": "https://whisper.gaia.domains/v1/audio/transcriptions",
-                "api_key": "gaia-OTBiYjlmZDEtNTc3OS00MjI5LWI0NDgtZDIxNTNmYjEwZDRj-IYuaA5AxGFTywJWq"
+                "api_key": ""
             },
             "workflows": []
         }
@@ -44,7 +44,7 @@ def get_whisper_api_config():
     config = get_workflows_config()
     return (
         config.get("whisper_api", {}).get("url", "https://whisper.gaia.domains/v1/audio/transcriptions"),
-        config.get("whisper_api", {}).get("api_key", "gaia-OTBiYjlmZDEtNTc3OS00MjI5LWI0NDgtZDIxNTNmYjEwZDRj-IYuaA5AxGFTywJWq")
+        config.get("whisper_api", {}).get("api_key", "")
     )
 
 gaia_api_key = os.getenv("GAIA_API_KEY")
@@ -109,7 +109,7 @@ LANGUAGE_MAPPING = {
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='threading', cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
 
-AUDIO_DIR = r"../../michael/echokit/8090/record"
+AUDIO_DIR = r"../../michael/echokit/9090/record"
 
 
 def parse_timestamp_from_filename(filename):
