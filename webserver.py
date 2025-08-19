@@ -19,6 +19,9 @@ from dotenv import load_dotenv
 
 from speechbrain.inference import EncoderClassifier
 
+import eventlet
+eventlet.monkey_patch()
+
 load_dotenv()
 
 # 加载工作流配置文件
@@ -107,7 +110,7 @@ LANGUAGE_MAPPING = {
 }
 
 app = Flask(__name__)
-socketio = SocketIO(app, async_mode='threading', cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
+socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
 
 AUDIO_DIR = r"../../michael/echokit/9090/record"
 
