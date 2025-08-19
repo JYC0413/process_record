@@ -643,7 +643,7 @@
 
                 // 禁用保存按钮
                 const saveBtn = document.getElementById('saveSettingsBtn');
-                disableButton(saveBtn, '保存中...');
+                disableButton(saveBtn, 'Saving...');
 
                 const updatedConfig = {
                     whisper_api: {
@@ -820,19 +820,19 @@
 
             // 开始转录按钮事件
             document.getElementById('btnStartTranscription').addEventListener('click', function() {
-                disableButton(this, '转录中...');
+                disableButton(this, 'Transcription...');
                 startTranscription(this);
             });
 
             // 音频处理按钮事件
             document.getElementById('btnStartAudioWorkflow').addEventListener('click', function() {
-                disableButton(this, '处理中...');
+                disableButton(this, 'Processing...');
                 startAudioWorkflow(this);
             });
 
             // 文本处理按钮事件
             document.getElementById('btnStartTextWorkflow').addEventListener('click', function() {
-                disableButton(this, '处理中...');
+                disableButton(this, 'Processing...');
                 startTextWorkflow(this);
             });
         });
@@ -875,6 +875,7 @@
                     } else {
                         alert("Failed to start transcription: Unknown error");
                     }
+                    enableButton(btn);
                     return;
                 }
                 const taskId = data.task_id;
@@ -1144,7 +1145,7 @@
 
                 // 禁用下载按钮
                 const downloadBtn = this.querySelector('button[type="submit"]');
-                disableButton(downloadBtn, '下载中...');
+                disableButton(downloadBtn, 'Downloading...');
 
                 const form = this;
                 const startInput = form.querySelector('input[name="start_time"]');
