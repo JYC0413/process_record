@@ -1,6 +1,3 @@
-import eventlet
-eventlet.monkey_patch()
-
 import re
 import os
 import io
@@ -111,7 +108,7 @@ LANGUAGE_MAPPING = {
 }
 
 app = Flask(__name__)
-socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
+socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
 
 AUDIO_DIR = r"../../michael/echokit/9090/record"
 
