@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 import re
 import os
 import io
@@ -19,8 +22,6 @@ from dotenv import load_dotenv
 
 from speechbrain.inference import EncoderClassifier
 
-import eventlet
-eventlet.monkey_patch()
 
 load_dotenv()
 
