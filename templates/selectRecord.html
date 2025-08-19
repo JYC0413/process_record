@@ -876,6 +876,7 @@
                         alert("Failed to start transcription: Unknown error");
                     }
                     enableButton(btn);
+                    document.getElementById('workflowProgressBar').style.display = 'none';
                     return;
                 }
                 const taskId = data.task_id;
