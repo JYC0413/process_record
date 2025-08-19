@@ -288,12 +288,12 @@ def download():
     start = request.form.get("start_time")
     end = request.form.get("end_time")
     if not start or not end:
-        return "Invalid time range", 400
+        return jsonify({"message": "Invalid time range"}), 400
     start_dt = datetime.fromisoformat(start)
     end_dt = datetime.fromisoformat(end)
     files = get_files_in_range(start_dt, end_dt)
     if not files:
-        return "No files found in range", 404
+        return jsonify({"message": "No files found in range"}), 404
     merged_audio = merge_wav_files(files)
     buf = io.BytesIO()
     merged_audio.export(buf, format="wav")
@@ -311,6 +311,8 @@ def transcribe():
     """处理音频转文字的接口，使用WebSocket通知进度"""
     start = request.form.get("start_time")
     end = request.form.get("end_time")
+    # 获取用户选择的语言，默认为auto（自动检测）
+    selected_language = request.form.get("language", "auto")
 
     if not start or not end:
         return jsonify({"message": "Invalid time range"}), 400
@@ -323,7 +325,7 @@ def transcribe():
     import uuid
     task_id = str(uuid.uuid4())
 
-    def transcribe_task(task_id, files):
+    def transcribe_task(task_id, files, selected_language):
         socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'start', 'message': 'Start processing audio'})
 
         merged_audio_group = merge_wav_files_grouped(files)
@@ -331,13 +333,21 @@ def transcribe():
         transcripts = ""
         total_content = ""
         standard_code = ""
+
+        # 如果用户选择了特定语言（不是自动检测），直接使用该语言
+        if selected_language != "auto":
+            standard_code = selected_language
+            socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'lang_select', 'message': f'Using user-selected language: {standard_code}'})
+
         with httpx.Client() as client:
             for i, audio in enumerate(merged_audio_group):
                 socketio.emit('workflow_progress', {'task_id': task_id, 'step': f'transcribe_{i+1}', 'message': f'Transcribing group {i+1}'})
                 buf = io.BytesIO()
                 audio.export(buf, format="wav")
                 buf.seek(0)
-                if i == 0:
+
+                # 只在自动检测模式下检测第一组音频的语言
+                if i == 0 and selected_language == "auto":
                     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
                         tmpfile.write(buf.read())
                         tmpfile_path = tmpfile.name
@@ -352,6 +362,8 @@ def transcribe():
                         if torch.max(confidence_scores).item() < 0.5:
                             standard_code = "en"
                         socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'lang_detect', 'message': f'Detected language: {standard_code}, confidence: {torch.max(confidence_scores).item():.4f}'})
+
+                # 使用确定的语言代码进行转录
                 if standard_code:
                     data = {
                         'max_len': "1024",
@@ -359,6 +371,7 @@ def transcribe():
                     }
                 else:
                     data = {}
+
                 buf.seek(0)
                 file_bytes = buf.getvalue()
                 files_httpx = {"file": ("audio.wav", file_bytes, "audio/wav")}
@@ -415,7 +428,7 @@ def transcribe():
         # Return transcription result
         socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed', 'result': transcripts})
 
-    socketio.start_background_task(transcribe_task, task_id, files)
+    socketio.start_background_task(transcribe_task, task_id, files, selected_language)
     return jsonify({'task_id': task_id})
 
 
