@@ -484,6 +484,25 @@
                     <!-- 文本处理流程 (默认隐藏) -->
                     <div id="textProcessSection" style="display:none;">
                         <div class="form-group" id="transcribeStatusSection">
+                            <!-- 添加语言选择下拉菜单 -->
+                            <div class="form-group">
+                                <label for="languageSelect">Recognition Language:</label>
+                                <select id="languageSelect" name="language" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                                    <option value="auto">Auto-detect (Default)</option>
+                                    <option value="zh">Chinese (中文)</option>
+                                    <option value="en">English</option>
+                                    <option value="es">Spanish (Español)</option>
+                                    <option value="fr">French (Français)</option>
+                                    <option value="de">German (Deutsch)</option>
+                                    <option value="ja">Japanese (日本語)</option>
+                                    <option value="ko">Korean (한국어)</option>
+                                    <option value="ru">Russian (Русский)</option>
+                                    <option value="pt">Portuguese (Português)</option>
+                                    <option value="ar">Arabic (العربية)</option>
+                                    <option value="hi">Hindi (हिन्दी)</option>
+                                    <option value="it">Italian (Italiano)</option>
+                                </select>
+                            </div>
                             <div class="btn-container">
                                 <button type="button" class="btn" id="btnStartTranscription">Start Transcription</button>
                             </div>
@@ -548,6 +567,26 @@
     </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
+        // 按钮禁用/启用函数
+        function disableButton(btn, loadingText = null) {
+            btn.disabled = true;
+            btn.dataset.originalHtml = btn.innerHTML;
+            if (loadingText) {
+                btn.innerHTML = `<span class="loading-spinner"></span> ${loadingText}`;
+            }
+            btn.style.opacity = '0.7';
+            btn.style.cursor = 'not-allowed';
+        }
+
+        function enableButton(btn) {
+            btn.disabled = false;
+            if (btn.dataset.originalHtml) {
+                btn.innerHTML = btn.dataset.originalHtml;
+            }
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+        }
+
         // 设置模态框功能
         document.addEventListener('DOMContentLoaded', function() {
             // 获取模态框元素
@@ -562,8 +601,10 @@
             // 当用户点击设置按钮时，打开模态框
             btn.onclick = function() {
                 // 打开模态框前加载当前设置
+                disableButton(btn);
                 loadCurrentSettings();
                 modal.style.display = "block";
+                enableButton(btn);
             }
 
             // 当用户点击 X 按钮时，关闭模态框
@@ -600,8 +641,9 @@
             settingsForm.onsubmit = function(e) {
                 e.preventDefault();
 
-                // 显示加载指示器
-                document.getElementById('settingsLoader').style.display = 'block';
+                // 禁用保存按钮
+                const saveBtn = document.getElementById('saveSettingsBtn');
+                disableButton(saveBtn, '保存中...');
 
                 const updatedConfig = {
                     whisper_api: {
@@ -619,9 +661,6 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    // 隐藏加载指示器
-                    document.getElementById('settingsLoader').style.display = 'none';
-
                     if (data.status === "success") {
                         // 显示成功消息
                         settingsSaved.style.display = "block";
@@ -636,8 +675,11 @@
                 })
                 .catch(error => {
                     console.error('Error saving settings:', error);
-                    document.getElementById('settingsLoader').style.display = 'none';
                     alert("An error occurred while saving settings");
+                })
+                .finally(() => {
+                    // 重新启用保存按钮
+                    enableButton(saveBtn);
                 });
             }
         });
@@ -778,30 +820,35 @@
 
             // 开始转录按钮事件
             document.getElementById('btnStartTranscription').addEventListener('click', function() {
-                startTranscription();
+                disableButton(this, '转录中...');
+                startTranscription(this);
             });
 
             // 音频处理按钮事件
             document.getElementById('btnStartAudioWorkflow').addEventListener('click', function() {
-                startAudioWorkflow();
+                disableButton(this, '处理中...');
+                startAudioWorkflow(this);
             });
 
             // 文本处理按钮事件
             document.getElementById('btnStartTextWorkflow').addEventListener('click', function() {
-                startTextWorkflow();
+                disableButton(this, '处理中...');
+                startTextWorkflow(this);
             });
         });
 
         // 开始转录流程 - 使用新的/transcribe接口
-        function startTranscription() {
+        function startTranscription(btn) {
             resetWorkflowUI();
 
             const form = document.getElementById('workflowForm');
             const startTime = form.querySelector('input[name="start_time"]').value;
             const endTime = form.querySelector('input[name="end_time"]').value;
+            const selectedLanguage = form.querySelector('#languageSelect').value;
 
             if (!startTime || !endTime) {
                 alert('Please select both start and end times.');
+                enableButton(btn);
                 return;
             }
 
@@ -810,6 +857,7 @@
             const formData = new FormData();
             formData.set('start_time', toUTCString(startTime));
             formData.set('end_time', toUTCString(endTime));
+            formData.set('language', selectedLanguage);
 
             const socket = io();
             let steps = [];
@@ -821,6 +869,14 @@
             })
             .then(response => response.json())
             .then(data => {
+                if(!data || !data.task_id) {
+                    if(data && data.message) {
+                        alert("Failed to start transcription: " + data.message);
+                    } else {
+                        alert("Failed to start transcription: Unknown error");
+                    }
+                    return;
+                }
                 const taskId = data.task_id;
 
                 socket.on('workflow_progress', function(msg) {
@@ -837,6 +893,7 @@
                         document.getElementById('transcribeStatusSection').style.display = 'none';
                         document.getElementById('workflowProgressBar').style.display = 'none';
                         socket.disconnect();
+                        enableButton(btn);
                     }
                 });
             })
@@ -844,11 +901,12 @@
                 console.error('Error:', error);
                 alert('Transcription failed: ' + error);
                 document.getElementById('workflowProgressBar').style.display = 'none';
+                enableButton(btn);
             });
         }
 
         // 开始音频处理工作流 - 使用新的/process_workflow接口
-        function startAudioWorkflow() {
+        function startAudioWorkflow(btn) {
             resetWorkflowUI();
 
             const form = document.getElementById('workflowForm');
@@ -858,16 +916,15 @@
 
             if (!startTime || !endTime) {
                 alert('Please select both start and end times.');
+                enableButton(btn);
                 return;
             }
 
             if (!selectedWorkflow) {
                 alert('Please select a workflow.');
+                enableButton(btn);
                 return;
             }
-
-            // 显示加载器
-            document.getElementById('audioProcessLoader').style.display = 'block';
 
             const formData = new FormData();
             formData.set('start_time', toUTCString(startTime));
@@ -881,7 +938,7 @@
 
                 if (!apiUrl) {
                     alert('Please enter an API URL for the custom API workflow.');
-                    document.getElementById('audioProcessLoader').style.display = 'none';
+                    enableButton(btn);
                     return;
                 }
                 formData.set('audio_api_url', apiUrl);
@@ -899,18 +956,18 @@
             .then(data => {
                 document.getElementById('workflowResult').style.display = 'block';
                 renderWorkflowResult(data.result || data);
-                document.getElementById('audioProcessLoader').style.display = 'none';
+                enableButton(btn);
             })
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('workflowResult').innerText = "Request failed: " + error;
                 document.getElementById('workflowResult').style.display = 'block';
-                document.getElementById('audioProcessLoader').style.display = 'none';
+                enableButton(btn);
             });
         }
 
         // 开始文本处理工作流 - 使用新的/process_workflow接口
-        function startTextWorkflow() {
+        function startTextWorkflow(btn) {
             resetWorkflowUI();
 
             const form = document.getElementById('workflowForm');
@@ -921,21 +978,21 @@
 
             if (!startTime || !endTime) {
                 alert('Please select both start and end times.');
+                enableButton(btn);
                 return;
             }
 
             if (!selectedWorkflow) {
                 alert('Please select a workflow.');
+                enableButton(btn);
                 return;
             }
 
             if (!transcript) {
                 alert('Transcript is empty. Please run transcription first.');
+                enableButton(btn);
                 return;
             }
-
-            // 显示加载器
-            document.getElementById('textProcessLoader').style.display = 'block';
 
             const formData = new FormData();
             formData.set('start_time', toUTCString(startTime));
@@ -950,7 +1007,7 @@
 
                 if (!apiUrl) {
                     alert('Please enter an API URL for the custom API workflow.');
-                    document.getElementById('textProcessLoader').style.display = 'none';
+                    enableButton(btn);
                     return;
                 }
                 formData.set('text_api_url', apiUrl);
@@ -973,13 +1030,13 @@
             .then(data => {
                 document.getElementById('workflowResult').style.display = 'block';
                 renderWorkflowResult(data.result || data);
-                document.getElementById('textProcessLoader').style.display = 'none';
+                enableButton(btn);
             })
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('workflowResult').innerText = "Request failed: " + error;
                 document.getElementById('workflowResult').style.display = 'block';
-                document.getElementById('textProcessLoader').style.display = 'none';
+                enableButton(btn);
             });
         }
 
@@ -1084,7 +1141,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('downloadForm').onsubmit = async function(e) {
                 e.preventDefault();
-                document.getElementById('downloadLoader').style.display = 'block';
+
+                // 禁用下载按钮
+                const downloadBtn = this.querySelector('button[type="submit"]');
+                disableButton(downloadBtn, '下载中...');
 
                 const form = this;
                 const startInput = form.querySelector('input[name="start_time"]');
@@ -1117,12 +1177,14 @@
                         a.remove();
                         window.URL.revokeObjectURL(url);
                     } else {
-                        alert('下载失败: ' + resp.message);
+                        console.log(resp)
+                        const data = await resp.json();
+                        alert('下载失败: ' + (data.message || '未知错误'));
                     }
                 } catch (err) {
                     alert('请求出错: ' + err.message);
                 } finally {
-                    document.getElementById('downloadLoader').style.display = 'none';
+                    enableButton(downloadBtn);
                 }
             }
         });

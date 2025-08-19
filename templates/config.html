@@ -682,6 +682,26 @@
             initModals();
         });
 
+        // 按钮禁用/启用函数
+        function disableButton(btn, loadingText = null) {
+            btn.disabled = true;
+            btn.dataset.originalHtml = btn.innerHTML;
+            if (loadingText) {
+                btn.innerHTML = `<span class="loading-spinner"></span> ${loadingText}`;
+            }
+            btn.style.opacity = '0.7';
+            btn.style.cursor = 'not-allowed';
+        }
+
+        function enableButton(btn) {
+            btn.disabled = false;
+            if (btn.dataset.originalHtml) {
+                btn.innerHTML = btn.dataset.originalHtml;
+            }
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+        }
+
         // 初始化标签页
         function initTabs() {
             const tabs = document.querySelectorAll('.tab');
@@ -777,22 +797,37 @@
         // 初始化表单事件
         function initFormEvents() {
             // 保存配置按钮
-            document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
+            document.getElementById('saveConfigBtn').addEventListener('click', function() {
+                disableButton(this, '保存中...');
+                saveConfig(this);
+            });
 
             // 添加工作流按钮
             document.getElementById('addWorkflowBtn').addEventListener('click', () => openWorkflowModal());
 
             // 保存工作流按钮
-            document.getElementById('saveWorkflowBtn').addEventListener('click', saveWorkflow);
+            document.getElementById('saveWorkflowBtn').addEventListener('click', function() {
+                disableButton(this, '保存中...');
+                saveWorkflow(this);
+            });
 
             // 确认删除按钮
-            document.getElementById('confirmDeleteBtn').addEventListener('click', deleteWorkflow);
+            document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+                disableButton(this, '删除中...');
+                deleteWorkflow(this);
+            });
 
             // 格式化JSON按钮
-            document.getElementById('formatJsonBtn').addEventListener('click', formatJson);
+            document.getElementById('formatJsonBtn').addEventListener('click', function() {
+                disableButton(this, '格式化中...');
+                formatJson(this);
+            });
 
             // 保存JSON按钮
-            document.getElementById('saveJsonBtn').addEventListener('click', saveJsonConfig);
+            document.getElementById('saveJsonBtn').addEventListener('click', function() {
+                disableButton(this, '保存中...');
+                saveJsonConfig(this);
+            });
 
             // 输入类型变更事件
             document.getElementById('workflowInputType').addEventListener('change', function() {
@@ -801,14 +836,27 @@
             });
 
             // 展开JSON编辑器
-            document.querySelector('.expand-editor').addEventListener('click', openFullscreenEditor);
+            document.querySelector('.expand-editor').addEventListener('click', function() {
+                disableButton(this);
+                openFullscreenEditor();
+                enableButton(this);
+            });
 
             // 全屏编辑器按钮
-            document.getElementById('formatFullscreenJsonBtn').addEventListener('click', formatFullscreenJson);
-            document.getElementById('applyFullscreenEdit').addEventListener('click', applyFullscreenEdit);
+            document.getElementById('formatFullscreenJsonBtn').addEventListener('click', function() {
+                disableButton(this, '格式化中...');
+                formatFullscreenJson(this);
+            });
+            document.getElementById('applyFullscreenEdit').addEventListener('click', function() {
+                disableButton(this, '应用中...');
+                applyFullscreenEdit(this);
+            });
 
             // 测试Whisper连接
-            document.getElementById('testWhisperBtn').addEventListener('click', testWhisperConnection);
+            document.getElementById('testWhisperBtn').addEventListener('click', function() {
+                disableButton(this, '测试中...');
+                testWhisperConnection(this);
+            });
         }
 
         // 初始化模态框
@@ -876,12 +924,13 @@
         }
 
         // 保存工作流
-        function saveWorkflow() {
+        function saveWorkflow(btn) {
             const index = parseInt(document.getElementById('workflowIndex').value);
             const name = document.getElementById('workflowName').value.trim();
 
             if (!name) {
                 showToast('工作流名称不能为空', 'error');
+                enableButton(btn);
                 return;
             }
 
@@ -917,6 +966,7 @@
             document.getElementById('workflowModal').classList.remove('show');
 
             showToast('工作流已保存', 'success');
+            enableButton(btn);
         }
 
         // 打开删除确认对话框
@@ -930,8 +980,11 @@
         }
 
         // 删除工作流
-        function deleteWorkflow() {
-            if (currentWorkflowIndex < 0 || !config.workflows[currentWorkflowIndex]) return;
+        function deleteWorkflow(btn) {
+            if (currentWorkflowIndex < 0 || !config.workflows[currentWorkflowIndex]) {
+                enableButton(btn);
+                return;
+            }
 
             config.workflows.splice(currentWorkflowIndex, 1);
 
@@ -943,10 +996,11 @@
             document.getElementById('confirmDeleteModal').classList.remove('show');
 
             showToast('工作流已删除', 'success');
+            enableButton(btn);
         }
 
         // 格式化JSON
-        function formatJson() {
+        function formatJson(btn) {
             try {
                 const jsonStr = document.getElementById('jsonEditor').value;
                 const jsonObj = JSON.parse(jsonStr);
@@ -955,10 +1009,11 @@
             } catch (error) {
                 showToast('JSON格式错误: ' + error.message, 'error');
             }
+            enableButton(btn);
         }
 
         // 保存JSON配置
-        function saveJsonConfig() {
+        function saveJsonConfig(btn) {
             try {
                 const jsonStr = document.getElementById('jsonEditor').value;
                 config = JSON.parse(jsonStr);
@@ -973,19 +1028,14 @@
             } catch (error) {
                 showToast('JSON格式错误: ' + error.message, 'error');
             }
+            enableButton(btn);
         }
 
         // 保存配置到服务器
-        function saveConfig() {
+        function saveConfig(btn) {
             // 首先更新Whisper配置
             config.whisper_api.url = document.getElementById('whisperApiUrl').value.trim();
             config.whisper_api.api_key = document.getElementById('whisperApiKey').value.trim();
-
-            // 显示保存中状态
-            const saveBtn = document.getElementById('saveConfigBtn');
-            const originalText = saveBtn.innerHTML;
-            saveBtn.innerHTML = '<span class="loading-spinner"></span> 保存中...';
-            saveBtn.disabled = true;
 
             fetch('/update_full_config', {
                 method: 'POST',
@@ -1008,20 +1058,12 @@
             })
             .finally(() => {
                 // 恢复按钮状态
-                saveBtn.innerHTML = originalText;
-                saveBtn.disabled = false;
+                enableButton(btn);
             });
         }
 
-        // 打开全屏JSON编辑器
-        function openFullscreenEditor() {
-            const modal = document.getElementById('fullscreenEditorModal');
-            document.getElementById('fullscreenJsonEditor').value = document.getElementById('jsonEditor').value;
-            modal.classList.add('show');
-        }
-
         // 格式化全屏编辑器的JSON
-        function formatFullscreenJson() {
+        function formatFullscreenJson(btn) {
             try {
                 const jsonStr = document.getElementById('fullscreenJsonEditor').value;
                 const jsonObj = JSON.parse(jsonStr);
@@ -1030,10 +1072,11 @@
             } catch (error) {
                 showToast('JSON格式错误: ' + error.message, 'error');
             }
+            enableButton(btn);
         }
 
         // 应用全屏编辑器的更改
-        function applyFullscreenEdit() {
+        function applyFullscreenEdit(btn) {
             try {
                 const jsonStr = document.getElementById('fullscreenJsonEditor').value;
                 const newConfig = JSON.parse(jsonStr);
@@ -1049,22 +1092,19 @@
             } catch (error) {
                 showToast('JSON格式错误: ' + error.message, 'error');
             }
+            enableButton(btn);
         }
 
         // 测试Whisper连接
-        function testWhisperConnection() {
+        function testWhisperConnection(btn) {
             const url = document.getElementById('whisperApiUrl').value.trim();
             const apiKey = document.getElementById('whisperApiKey').value.trim();
 
             if (!url) {
                 showToast('请输入API URL', 'error');
+                enableButton(btn);
                 return;
             }
-
-            const testBtn = document.getElementById('testWhisperBtn');
-            const originalText = testBtn.innerHTML;
-            testBtn.innerHTML = '<span class="loading-spinner"></span> 测试中...';
-            testBtn.disabled = true;
 
             // 简单测试连接，只验证URL是否可访问
             fetch(url, {
@@ -1084,8 +1124,7 @@
             })
             .finally(() => {
                 // 恢复按钮状态
-                testBtn.innerHTML = originalText;
-                testBtn.disabled = false;
+                enableButton(btn);
             });
         }
 
