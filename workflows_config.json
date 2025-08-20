@@ -1,7 +1,8 @@
 {
   "whisper_api": {
+    "url": "https://whisper.gaia.domains/v1/audio/transcriptions",
     "api_key": "gaia-OTBiYjlmZDEtNTc3OS00MjI5LWI0NDgtZDIxNTNmYjEwZDRj-IYuaA5AxGFTywJWq",
-    "url": "https://whisper.gaia.domains/v1/audio/transcriptions"
+    "model": "default"
   },
   "workflows": [
     {
