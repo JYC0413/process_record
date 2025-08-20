@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>工作流配置管理</title>
+    <title>Configuration Settings</title>
     <style>
         * {
             margin: 0;
@@ -16,68 +16,51 @@
             background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
             min-height: 100vh;
             color: #e0e0e0;
-            overflow-x: hidden;
+            padding: 40px;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 900px;
             margin: 0 auto;
-            padding: 30px 20px;
-            position: relative;
-            z-index: 10;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        header {
+            margin-bottom: 40px;
+            text-align: center;
         }
 
         h1 {
-            font-size: 2.2rem;
+            font-size: 2.5rem;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            margin-bottom: 10px;
         }
 
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            font-size: 1rem;
-            font-weight: 500;
-            border-radius: 10px;
-            cursor: pointer;
+        .back-btn {
+            display: inline-block;
+            margin-top: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
             transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
         }
 
-        .btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
+        .back-btn:hover {
             background: rgba(255, 255, 255, 0.1);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+            color: #fff;
         }
 
         .section {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 25px;
+            border-radius: 20px;
+            padding: 30px;
             margin-bottom: 30px;
             transition: all 0.3s ease;
         }
@@ -87,16 +70,37 @@
             box-shadow: 0 10px 30px rgba(102, 126, 234, 0.1);
         }
 
-        .section-title {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
+        .section-header {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .section-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            margin: 0;
         }
 
         .form-group {
             margin-bottom: 20px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
         }
 
         label {
@@ -108,8 +112,8 @@
 
         input[type="text"],
         input[type="password"],
-        textarea,
-        select {
+        input[type="url"],
+        textarea {
             width: 100%;
             padding: 12px 16px;
             background: rgba(255, 255, 255, 0.05);
@@ -118,1034 +122,880 @@
             color: #fff;
             font-size: 1rem;
             transition: all 0.3s ease;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
 
         input[type="text"]:focus,
         input[type="password"]:focus,
-        textarea:focus,
-        select:focus {
+        input[type="url"]:focus,
+        textarea:focus {
             outline: none;
             border-color: #667eea;
             background: rgba(102, 126, 234, 0.1);
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        textarea {
-            min-height: 120px;
-            resize: vertical;
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        .workflows-container {
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-container {
             display: flex;
-            flex-direction: column;
-            gap: 20px;
+            align-items: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .success-message {
+            background: rgba(39, 174, 96, 0.2);
+            border-left: 4px solid #27ae60;
+            padding: 10px 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.2);
+            border-left: 4px solid #e74c3c;
+            padding: 10px 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        /* 工作流管理样式 */
+        .workflows-container {
+            margin-top: 30px;
+        }
+
+        .workflow-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
         }
 
         .workflow-item {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 20px;
-            position: relative;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.2s ease;
+        }
+
+        .workflow-item:hover {
+            border-color: rgba(102, 126, 234, 0.3);
         }
 
         .workflow-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 10px;
         }
 
         .workflow-title {
-            font-size: 1.2rem;
             font-weight: 600;
-        }
-
-        .workflow-controls {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn-icon {
-            width: 34px;
-            height: 34px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
             font-size: 1.1rem;
-        }
-
-        .btn-icon:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .btn-edit {
-            background: rgba(102, 126, 234, 0.2);
-        }
-
-        .btn-edit:hover {
-            background: rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-delete {
-            background: rgba(255, 65, 108, 0.2);
-        }
-
-        .btn-delete:hover {
-            background: rgba(255, 65, 108, 0.4);
-        }
-
-        .workflow-collapsed-content {
-            color: #999;
-            font-size: 0.9rem;
-        }
-
-        .workflow-expanded-content {
-            display: none;
-        }
-
-        .workflow-expanded-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .add-workflow-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px dashed rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            color: #b0b0b0;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .add-workflow-btn:hover {
-            background: rgba(102, 126, 234, 0.1);
-            border-color: rgba(102, 126, 234, 0.3);
             color: #fff;
         }
 
-        .footer-actions {
+        .workflow-actions {
             display: flex;
-            justify-content: space-between;
-            margin-top: 30px;
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: rgba(39, 174, 96, 0.9);
-            color: #fff;
-            padding: 15px 25px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            display: flex;
-            align-items: center;
             gap: 10px;
-            font-weight: 500;
-            opacity: 0;
-            transform: translateY(50px);
-            transition: all 0.3s ease;
-            z-index: 1000;
         }
 
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .toast.error {
-            background: rgba(231, 76, 60, 0.9);
-        }
-
-        .code-editor {
-            position: relative;
-        }
-
-        .expand-editor {
-            position: absolute;
-            top: 10px;
-            right: 10px;
+        .workflow-action-btn {
             background: rgba(255, 255, 255, 0.1);
-            border: none;
             color: #fff;
+            border: none;
             width: 30px;
             height: 30px;
-            border-radius: 6px;
+            border-radius: 50%;
             cursor: pointer;
-            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
         }
 
-        .expand-editor:hover {
+        .workflow-action-btn:hover {
             background: rgba(255, 255, 255, 0.2);
         }
 
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
+        .workflow-action-btn.edit:hover {
+            background: rgba(52, 152, 219, 0.4);
         }
 
-        .modal.show {
-            display: flex;
-            animation: modalFadeIn 0.3s ease;
+        .workflow-action-btn.delete:hover {
+            background: rgba(231, 76, 60, 0.4);
         }
 
-        .modal-content {
-            width: 90%;
-            max-width: 800px;
-            background: linear-gradient(135deg, #1f1f3f 0%, #1a1a2e 100%);
-            border-radius: 15px;
-            padding: 25px;
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .modal-title {
-            font-size: 1.5rem;
-            color: #fff;
-        }
-
-        .close-modal {
-            background: none;
-            border: none;
+        .workflow-details {
+            font-size: 0.9rem;
             color: #b0b0b0;
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: all 0.2s;
         }
 
-        .close-modal:hover {
-            color: #fff;
+        .workflow-detail {
+            margin-bottom: 5px;
         }
 
-        .modal-body {
-            max-height: 60vh;
-            overflow-y: auto;
-            padding-right: 10px;
+        .workflow-detail span {
+            color: #e0e0e0;
         }
 
-        .modal-footer {
+        /* 添加工作流表单 */
+        .add-workflow-form {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .form-row {
             display: flex;
-            justify-content: flex-end;
-            gap: 15px;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 20px;
+            margin-bottom: 20px;
         }
 
-        @keyframes modalFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .form-col {
+            flex: 1;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container {
-                padding: 20px 15px;
-            }
-
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
-
-            .section, .workflow-item {
-                padding: 15px;
-            }
-
-            .workflow-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-
-            .footer-actions {
-                flex-direction: column;
-                gap: 15px;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-
-        .loading-spinner {
-            display: inline-block;
+        /* 加载动画 */
+        .loader {
+            display: none;
             width: 20px;
             height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255, 255, 255, .3);
             border-radius: 50%;
             border-top-color: #fff;
             animation: spin 1s linear infinite;
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
-        .tab-container {
-            display: flex;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 20px;
-            overflow-x: auto;
-            scrollbar-width: none;
-        }
-
-        .tab-container::-webkit-scrollbar {
-            display: none;
-        }
-
-        .tab {
-            padding: 12px 20px;
-            color: #b0b0b0;
-            cursor: pointer;
-            transition: all 0.3s;
-            white-space: nowrap;
+        /* 搜索框下拉菜单样式 */
+        .search-container {
             position: relative;
+            width: 100%;
         }
 
-        .tab:hover {
-            color: #fff;
+        .search-input {
+            width: 100%;
+            padding-right: 40px; /* 为下拉箭头留空间 */
         }
 
-        .tab.active {
-            color: #fff;
-        }
-
-        .tab.active::after {
-            content: '';
+        .dropdown-arrow {
             position: absolute;
-            bottom: -1px;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+        }
+
+        .dropdown-list {
+            position: absolute;
+            top: 100%;
             left: 0;
             width: 100%;
-            height: 3px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 3px 3px 0 0;
-        }
-
-        .tab-content {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #1f1f3f;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-top: 5px;
+            z-index: 1000;
             display: none;
         }
 
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s;
+        .dropdown-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
         }
 
-        pre {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            padding: 15px;
-            overflow-x: auto;
-            color: #ddd;
+        .dropdown-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .dropdown-list.show {
+            display: block;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .section {
+                padding: 20px;
+            }
+
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>工作流配置管理</h1>
-            <div style="display: flex; gap: 15px;">
-                <button class="btn btn-secondary" onclick="window.location.href='/'">
-                    <span>🏠</span> 返回首页
+<div class="container">
+    <header>
+        <h1>Configuration Settings</h1>
+        <a href="/" class="back-btn">← Back to Main Page</a>
+    </header>
+
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">🎙️</div>
+            <h2>Whisper API Settings</h2>
+        </div>
+
+        <form id="whisperApiForm">
+            <div class="form-group">
+                <label for="whisperApiUrl">Whisper API URL</label>
+                <input type="url" id="whisperApiUrl" name="whisper_api_url"
+                       placeholder="https://whisper.gaia.domains/v1/audio/transcriptions">
+            </div>
+
+            <div class="form-group">
+                <label for="whisperApiKey">API Key</label>
+                <input type="password" id="whisperApiKey" name="whisper_api_key"
+                       placeholder="Enter your Whisper API key">
+            </div>
+
+            <div class="form-group">
+                <label for="whisperApiModel">Model</label>
+                <div class="search-container">
+                    <input type="text" id="whisperApiModel" name="whisper_api_model"
+                           placeholder="Select or type model name" class="search-input">
+                    <span class="dropdown-arrow">▼</span>
+                    <div id="modelDropdown" class="dropdown-list">
+                        <!-- Models will be loaded here -->
+                        <div class="dropdown-item">Loading models...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-container">
+                <button type="submit" class="btn" id="saveWhisperApiBtn">Save Settings</button>
+                <button type="button" class="btn" id="fetchModelsBtn"
+                        style="background:linear-gradient(135deg, #3498db 0%, #2980b9 100%);">Fetch Models
                 </button>
-                <button class="btn" id="saveConfigBtn">
-                    <span>💾</span> 保存所有配置
-                </button>
+                <div class="loader" id="whisperApiLoader"></div>
             </div>
-        </div>
-
-        <div class="tab-container">
-            <div class="tab active" data-tab="whisper-settings">Whisper API 设置</div>
-            <div class="tab" data-tab="workflows">工作流管理</div>
-            <div class="tab" data-tab="json-editor">JSON 编辑器</div>
-        </div>
-
-        <div class="tab-content active" id="whisper-settings">
-            <div class="section">
-                <div class="section-title">
-                    <span>🎙️</span> Whisper API 设置
-                </div>
-                <div class="form-group">
-                    <label for="whisperApiUrl">API URL:</label>
-                    <input type="text" id="whisperApiUrl" placeholder="https://whisper.gaia.domains/v1/audio/transcriptions">
-                </div>
-                <div class="form-group">
-                    <label for="whisperApiKey">API Key:</label>
-                    <input type="text" id="whisperApiKey" placeholder="Enter your API key">
-                </div>
-                <button class="btn" id="testWhisperBtn">
-                    <span>🔍</span> 测试连接
-                </button>
-            </div>
-        </div>
-
-        <div class="tab-content" id="workflows">
-            <div class="section">
-                <div class="section-title">
-                    <span>🔄</span> 工作流管理
-                </div>
-
-                <div class="workflows-container" id="workflowsContainer">
-                    <!-- 工作流列表将通过JavaScript动态生成 -->
-                </div>
-
-                <div class="add-workflow-btn" id="addWorkflowBtn">
-                    <span style="font-size: 1.5rem;">+</span>
-                    <span>添加新工作流</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="tab-content" id="json-editor">
-            <div class="section">
-                <div class="section-title">
-                    <span>📝</span> 原始JSON编辑器
-                </div>
-                <div class="code-editor">
-                    <textarea id="jsonEditor" style="min-height: 400px; font-family: monospace;"></textarea>
-                    <button class="expand-editor" title="展开编辑器">⤢</button>
-                </div>
-                <div style="margin-top: 15px; display: flex; justify-content: space-between;">
-                    <button class="btn btn-secondary" id="formatJsonBtn">
-                        <span>🔧</span> 格式化JSON
-                    </button>
-                    <button class="btn" id="saveJsonBtn">
-                        <span>💾</span> 保存JSON
-                    </button>
-                </div>
-            </div>
-        </div>
+            <div id="whisperApiSuccess" class="success-message">Settings saved successfully!</div>
+            <div id="whisperApiError" class="error-message">Error saving settings.</div>
+        </form>
     </div>
 
-    <!-- 工作流编辑模态框 -->
-    <div class="modal" id="workflowModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="workflowModalTitle">编辑工作流</h2>
-                <button class="close-modal">&times;</button>
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">🔄</div>
+            <h2>Workflow Management</h2>
+        </div>
+
+        <div class="workflows-container" id="workflowsContainer">
+            <div class="workflow-list" id="workflowList">
+                <!-- Workflow items will be loaded here -->
+                <div style="text-align: center; padding: 20px; color: #b0b0b0;">Loading workflows...</div>
             </div>
-            <div class="modal-body">
-                <form id="workflowForm">
-                    <input type="hidden" id="workflowIndex" value="-1">
+
+            <div class="btn-container">
+                <button class="btn" id="addWorkflowBtn">Add New Workflow</button>
+                <div class="loader" id="workflowsLoader"></div>
+            </div>
+            <div id="workflowsSuccess" class="success-message">Operation completed successfully!</div>
+            <div id="workflowsError" class="error-message">An error occurred.</div>
+        </div>
+
+        <!-- Add/Edit Workflow Form -->
+        <div class="add-workflow-form" id="workflowForm">
+            <h3 style="color: #fff; margin-bottom: 20px;" id="workflowFormTitle">Add New Workflow</h3>
+
+            <div class="form-group">
+                <label for="workflowName">Workflow Name</label>
+                <input type="text" id="workflowName" name="name" placeholder="Enter a name for this workflow">
+            </div>
+
+            <div class="form-row">
+                <div class="form-col">
                     <div class="form-group">
-                        <label for="workflowName">工作流名称:</label>
-                        <input type="text" id="workflowName" required placeholder="例如：会议摘要">
-                    </div>
-                    <div class="form-group">
-                        <label for="workflowDesc">描述:</label>
-                        <input type="text" id="workflowDesc" placeholder="简要描述此工作流的功能">
-                    </div>
-                    <div class="form-group">
-                        <label for="workflowInputType">输入类型:</label>
-                        <select id="workflowInputType">
-                            <option value="text">文本 (转写结果)</option>
-                            <option value="audio">音频 (原始录音)</option>
+                        <label for="workflowInputType">Input Type</label>
+                        <select id="workflowInputType" name="input_type"
+                                style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                            <option value="text">Text</option>
+                            <option value="audio">Audio</option>
                         </select>
                     </div>
+                </div>
+                <div class="form-col">
                     <div class="form-group">
-                        <label for="workflowApiEndpoint">API端点:</label>
-                        <input type="text" id="workflowApiEndpoint" placeholder="https://api.example.com/endpoint">
+                        <label for="workflowApiEndpoint">API Endpoint</label>
+                        <input type="url" id="workflowApiEndpoint" name="api_endpoint"
+                               placeholder="https://api.example.com/endpoint">
                     </div>
-                    <div class="form-group">
-                        <label for="workflowApiKey">API密钥:</label>
-                        <input type="text" id="workflowApiKey" placeholder="API密钥 (可选)">
-                    </div>
-                    <div class="form-group" id="promptFormGroup">
-                        <label for="workflowPrompt">自定义提示词:</label>
-                        <textarea id="workflowPrompt" placeholder="为AI提供的系统提示词 (用于文本类型工作流)"></textarea>
-                    </div>
-                </form>
+                </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancelWorkflowBtn">取消</button>
-                <button class="btn" id="saveWorkflowBtn">保存工作流</button>
+
+            <div class="form-group">
+                <label for="workflowApiKey">API Key (Optional)</label>
+                <input type="password" id="workflowApiKey" name="api_key" placeholder="Enter API key if needed">
+            </div>
+
+            <div class="form-group">
+                <label for="workflowDescription">Description</label>
+                <textarea id="workflowDescription" name="description" rows="3"
+                          placeholder="Describe what this workflow does"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="workflowCustomPrompt">Custom Prompt (for text workflows)</label>
+                <textarea id="workflowCustomPrompt" name="custom_prompt" rows="5"
+                          placeholder="Enter a system prompt for text-based workflows"></textarea>
+            </div>
+
+            <input type="hidden" id="workflowEditIndex" value="-1">
+
+            <div class="btn-container">
+                <button type="button" class="btn" id="saveWorkflowBtn">Save Workflow</button>
+                <button type="button" class="btn" id="cancelWorkflowBtn" style="background: rgba(255,255,255,0.1);">
+                    Cancel
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- 确认删除模态框 -->
-    <div class="modal" id="confirmDeleteModal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2 class="modal-title">确认删除</h2>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>您确定要删除此工作流吗？此操作无法撤销。</p>
-                <p style="margin-top: 10px; font-weight: bold;" id="deleteWorkflowName"></p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancelDeleteBtn">取消</button>
-                <button class="btn btn-danger" id="confirmDeleteBtn">删除</button>
-            </div>
-        </div>
-    </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Whisper API 表单处理
+        const whisperApiForm = document.getElementById('whisperApiForm');
+        const whisperApiUrl = document.getElementById('whisperApiUrl');
+        const whisperApiKey = document.getElementById('whisperApiKey');
+        const whisperApiModel = document.getElementById('whisperApiModel');
+        const whisperApiLoader = document.getElementById('whisperApiLoader');
+        const whisperApiSuccess = document.getElementById('whisperApiSuccess');
+        const whisperApiError = document.getElementById('whisperApiError');
+        const fetchModelsBtn = document.getElementById('fetchModelsBtn');
+        const modelDropdown = document.getElementById('modelDropdown');
 
-    <!-- JSON编辑器全屏模态框 -->
-    <div class="modal" id="fullscreenEditorModal">
-        <div class="modal-content" style="width: 95%; max-width: 1200px;">
-            <div class="modal-header">
-                <h2 class="modal-title">编辑JSON配置</h2>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body" style="padding: 0;">
-                <textarea id="fullscreenJsonEditor" style="width: 100%; height: 70vh; font-family: monospace; padding: 15px;"></textarea>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancelFullscreenEdit">取消</button>
-                <button class="btn" id="formatFullscreenJsonBtn">格式化</button>
-                <button class="btn" id="applyFullscreenEdit">应用更改</button>
-            </div>
-        </div>
-    </div>
+        // 初始加载配置
+        loadWhisperApiConfig();
 
-    <!-- 通知提示 -->
-    <div class="toast" id="toast"></div>
+        // 处理模型下拉框交互
+        setupModelDropdown();
 
-    <script>
-        // 全局变量存储配置
-        let config = {
-            whisper_api: {
-                url: "",
-                api_key: ""
-            },
-            workflows: []
-        };
-        let currentWorkflowIndex = -1;
-
-        // DOM加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            // 初始化标签页切换
-            initTabs();
-
-            // 加载配置
-            loadConfig();
-
-            // 初始化表单事件
-            initFormEvents();
-
-            // 初始化模态框
-            initModals();
+        // 保存 Whisper API 设置
+        whisperApiForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            saveWhisperApiConfig();
         });
 
-        // 按钮禁用/启用函数
-        function disableButton(btn, loadingText = null) {
-            btn.disabled = true;
-            btn.dataset.originalHtml = btn.innerHTML;
-            if (loadingText) {
-                btn.innerHTML = `<span class="loading-spinner"></span> ${loadingText}`;
-            }
-            btn.style.opacity = '0.7';
-            btn.style.cursor = 'not-allowed';
-        }
+        // 获取模型列表
+        fetchModelsBtn.addEventListener('click', function () {
+            fetchWhisperModels();
+        });
 
-        function enableButton(btn) {
-            btn.disabled = false;
-            if (btn.dataset.originalHtml) {
-                btn.innerHTML = btn.dataset.originalHtml;
-            }
-            btn.style.opacity = '';
-            btn.style.cursor = '';
-        }
+        // Workflow 管理
+        const workflowList = document.getElementById('workflowList');
+        const addWorkflowBtn = document.getElementById('addWorkflowBtn');
+        const workflowForm = document.getElementById('workflowForm');
+        const saveWorkflowBtn = document.getElementById('saveWorkflowBtn');
+        const cancelWorkflowBtn = document.getElementById('cancelWorkflowBtn');
+        const workflowsLoader = document.getElementById('workflowsLoader');
+        const workflowsSuccess = document.getElementById('workflowsSuccess');
+        const workflowsError = document.getElementById('workflowsError');
+        const workflowEditIndex = document.getElementById('workflowEditIndex');
 
-        // 初始化标签页
-        function initTabs() {
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const tabId = this.getAttribute('data-tab');
+        // 初始加载工作流
+        loadWorkflows();
 
-                    // 移除所有激活状态
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-                    // 激活当前标签
-                    this.classList.add('active');
-                    document.getElementById(tabId).classList.add('active');
-                });
-            });
-        }
-
-        // 加载配置
-        function loadConfig() {
-            showToast('加载配置中...', 'info');
-
-            fetch('/get_full_config')
-                .then(response => response.json())
-                .then(data => {
-                    config = data;
-                    updateUI();
-                    showToast('配置已加载', 'success');
-                })
-                .catch(error => {
-                    console.error('Error loading config:', error);
-                    showToast('加载配置失败', 'error');
-                });
-        }
-
-        // 更新UI显示当前配置
-        function updateUI() {
-            // 更新Whisper设置
-            document.getElementById('whisperApiUrl').value = config.whisper_api.url || '';
-            document.getElementById('whisperApiKey').value = config.whisper_api.api_key || '';
-
-            // 更新工作流列表
-            updateWorkflowsList();
-
-            // 更新JSON编辑器
-            document.getElementById('jsonEditor').value = JSON.stringify(config, null, 2);
-        }
-
-        // 更新工作流列表
-        function updateWorkflowsList() {
-            const container = document.getElementById('workflowsContainer');
-            container.innerHTML = '';
-
-            if (!config.workflows || config.workflows.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:30px;color:#999;">暂无工作流，点击下方按钮添加</div>';
-                return;
-            }
-
-            config.workflows.forEach((workflow, index) => {
-                const item = document.createElement('div');
-                item.className = 'workflow-item';
-                item.innerHTML = `
-                    <div class="workflow-header">
-                        <div class="workflow-title">${workflow.name || '未命名工作流'}</div>
-                        <div class="workflow-controls">
-                            <button class="btn-icon btn-edit" title="编辑" data-index="${index}">✏️</button>
-                            <button class="btn-icon btn-delete" title="删除" data-index="${index}">🗑️</button>
-                        </div>
-                    </div>
-                    <div class="workflow-collapsed-content">
-                        <div>${workflow.description || '无描述'}</div>
-                        <div>类型：${workflow.input_type === 'audio' ? '音频处理' : '文本处理'}</div>
-                        <div>API：${workflow.api_endpoint || '未设置'}</div>
-                    </div>
-                `;
-
-                // 添加编辑事件
-                item.querySelector('.btn-edit').addEventListener('click', function() {
-                    const index = parseInt(this.getAttribute('data-index'));
-                    openWorkflowModal(index);
-                });
-
-                // 添加删除事件
-                item.querySelector('.btn-delete').addEventListener('click', function() {
-                    const index = parseInt(this.getAttribute('data-index'));
-                    openDeleteConfirmation(index);
-                });
-
-                container.appendChild(item);
-            });
-        }
-
-        // 初始化表单事件
-        function initFormEvents() {
-            // 保存配置按钮
-            document.getElementById('saveConfigBtn').addEventListener('click', function() {
-                disableButton(this, '保存中...');
-                saveConfig(this);
-            });
-
-            // 添加工作流按钮
-            document.getElementById('addWorkflowBtn').addEventListener('click', () => openWorkflowModal());
-
-            // 保存工作流按钮
-            document.getElementById('saveWorkflowBtn').addEventListener('click', function() {
-                disableButton(this, '保存中...');
-                saveWorkflow(this);
-            });
-
-            // 确认删除按钮
-            document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
-                disableButton(this, '删除中...');
-                deleteWorkflow(this);
-            });
-
-            // 格式化JSON按钮
-            document.getElementById('formatJsonBtn').addEventListener('click', function() {
-                disableButton(this, '格式化中...');
-                formatJson(this);
-            });
-
-            // 保存JSON按钮
-            document.getElementById('saveJsonBtn').addEventListener('click', function() {
-                disableButton(this, '保存中...');
-                saveJsonConfig(this);
-            });
-
-            // 输入类型变更事件
-            document.getElementById('workflowInputType').addEventListener('change', function() {
-                const promptGroup = document.getElementById('promptFormGroup');
-                promptGroup.style.display = this.value === 'text' ? 'block' : 'none';
-            });
-
-            // 展开JSON编辑器
-            document.querySelector('.expand-editor').addEventListener('click', function() {
-                disableButton(this);
-                openFullscreenEditor();
-                enableButton(this);
-            });
-
-            // 全屏编辑器按钮
-            document.getElementById('formatFullscreenJsonBtn').addEventListener('click', function() {
-                disableButton(this, '格式化中...');
-                formatFullscreenJson(this);
-            });
-            document.getElementById('applyFullscreenEdit').addEventListener('click', function() {
-                disableButton(this, '应用中...');
-                applyFullscreenEdit(this);
-            });
-
-            // 测试Whisper连接
-            document.getElementById('testWhisperBtn').addEventListener('click', function() {
-                disableButton(this, '测试中...');
-                testWhisperConnection(this);
-            });
-        }
-
-        // 初始化模态框
-        function initModals() {
-            // 工作流模态框
-            const workflowModal = document.getElementById('workflowModal');
-            document.querySelector('#workflowModal .close-modal').addEventListener('click', () => {
-                workflowModal.classList.remove('show');
-            });
-            document.getElementById('cancelWorkflowBtn').addEventListener('click', () => {
-                workflowModal.classList.remove('show');
-            });
-
-            // 删除确认模态框
-            const deleteModal = document.getElementById('confirmDeleteModal');
-            document.querySelector('#confirmDeleteModal .close-modal').addEventListener('click', () => {
-                deleteModal.classList.remove('show');
-            });
-            document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
-                deleteModal.classList.remove('show');
-            });
-
-            // 全屏编辑器模态框
-            const editorModal = document.getElementById('fullscreenEditorModal');
-            document.querySelector('#fullscreenEditorModal .close-modal').addEventListener('click', () => {
-                editorModal.classList.remove('show');
-            });
-            document.getElementById('cancelFullscreenEdit').addEventListener('click', () => {
-                editorModal.classList.remove('show');
-            });
-        }
-
-        // 打开工作流编辑模态框
-        function openWorkflowModal(index = -1) {
-            currentWorkflowIndex = index;
-            const modal = document.getElementById('workflowModal');
-            const form = document.getElementById('workflowForm');
-            const title = document.getElementById('workflowModalTitle');
-
-            // 重置表单
-            form.reset();
-
-            if (index >= 0 && config.workflows[index]) {
-                // 编辑现有工作流
-                const workflow = config.workflows[index];
-                title.textContent = '编辑工作流';
-                document.getElementById('workflowIndex').value = index;
-                document.getElementById('workflowName').value = workflow.name || '';
-                document.getElementById('workflowDesc').value = workflow.description || '';
-                document.getElementById('workflowInputType').value = workflow.input_type || 'text';
-                document.getElementById('workflowApiEndpoint').value = workflow.api_endpoint || '';
-                document.getElementById('workflowApiKey').value = workflow.api_key || '';
-                document.getElementById('workflowPrompt').value = workflow.custom_prompt || '';
-            } else {
-                // 添加新工作流
-                title.textContent = '添加工作流';
-                document.getElementById('workflowIndex').value = -1;
-            }
-
-            // 根据输入类型显示/隐藏提示词
-            const inputType = document.getElementById('workflowInputType').value;
-            document.getElementById('promptFormGroup').style.display = inputType === 'text' ? 'block' : 'none';
-
-            modal.classList.add('show');
-        }
+        // 添加工作流按钮
+        addWorkflowBtn.addEventListener('click', function () {
+            showWorkflowForm();
+        });
 
         // 保存工作流
-        function saveWorkflow(btn) {
-            const index = parseInt(document.getElementById('workflowIndex').value);
-            const name = document.getElementById('workflowName').value.trim();
+        saveWorkflowBtn.addEventListener('click', function () {
+            saveWorkflow();
+        });
 
-            if (!name) {
-                showToast('工作流名称不能为空', 'error');
-                enableButton(btn);
-                return;
-            }
+        // 取消编辑工作流
+        cancelWorkflowBtn.addEventListener('click', function () {
+            hideWorkflowForm();
+        });
 
-            const workflow = {
-                name: name,
-                description: document.getElementById('workflowDesc').value.trim(),
-                input_type: document.getElementById('workflowInputType').value,
-                api_endpoint: document.getElementById('workflowApiEndpoint').value.trim(),
-                api_key: document.getElementById('workflowApiKey').value.trim()
+        // 函数定义
+
+        function loadWhisperApiConfig() {
+            showLoader(whisperApiLoader);
+            fetch('/get_config')
+                .then(response => response.json())
+                .then(data => {
+                    const whisperConfig = data.whisper_api || {};
+                    whisperApiUrl.value = whisperConfig.url || '';
+                    whisperApiKey.value = whisperConfig.api_key || '';
+                    whisperApiModel.value = whisperConfig.model || '';
+
+                    // 如果有URL和Key，自动尝试获取模型列表
+                    if (whisperConfig.url && whisperConfig.api_key) {
+                        fetchWhisperModels(false); // 静默获取
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading Whisper API config:', error);
+                    showError(whisperApiError, 'Failed to load configuration.');
+                })
+                .finally(() => {
+                    hideLoader(whisperApiLoader);
+                });
+        }
+
+        function saveWhisperApiConfig() {
+            showLoader(whisperApiLoader);
+            hideMessage(whisperApiSuccess);
+            hideMessage(whisperApiError);
+
+            const updatedConfig = {
+                whisper_api: {
+                    url: whisperApiUrl.value.trim() || 'https://whisper.gaia.domains/v1/audio/transcriptions',
+                    api_key: whisperApiKey.value.trim(),
+                    model: whisperApiModel.value.trim()
+                }
             };
 
-            // 只有文本类型工作流才添加提示词
-            if (workflow.input_type === 'text') {
-                workflow.custom_prompt = document.getElementById('workflowPrompt').value.trim();
-            }
-
-            if (index >= 0) {
-                // 更新现有工作流
-                config.workflows[index] = workflow;
-            } else {
-                // 添加新工作流
-                if (!config.workflows) {
-                    config.workflows = [];
-                }
-                config.workflows.push(workflow);
-            }
-
-            // 更新UI
-            updateWorkflowsList();
-            document.getElementById('jsonEditor').value = JSON.stringify(config, null, 2);
-
-            // 关闭模态框
-            document.getElementById('workflowModal').classList.remove('show');
-
-            showToast('工作流已保存', 'success');
-            enableButton(btn);
-        }
-
-        // 打开删除确认对话框
-        function openDeleteConfirmation(index) {
-            if (index < 0 || !config.workflows[index]) return;
-
-            currentWorkflowIndex = index;
-            const workflow = config.workflows[index];
-            document.getElementById('deleteWorkflowName').textContent = workflow.name || '未命名工作流';
-            document.getElementById('confirmDeleteModal').classList.add('show');
-        }
-
-        // 删除工作流
-        function deleteWorkflow(btn) {
-            if (currentWorkflowIndex < 0 || !config.workflows[currentWorkflowIndex]) {
-                enableButton(btn);
-                return;
-            }
-
-            config.workflows.splice(currentWorkflowIndex, 1);
-
-            // 更新UI
-            updateWorkflowsList();
-            document.getElementById('jsonEditor').value = JSON.stringify(config, null, 2);
-
-            // 关闭模态框
-            document.getElementById('confirmDeleteModal').classList.remove('show');
-
-            showToast('工作流已删除', 'success');
-            enableButton(btn);
-        }
-
-        // 格式化JSON
-        function formatJson(btn) {
-            try {
-                const jsonStr = document.getElementById('jsonEditor').value;
-                const jsonObj = JSON.parse(jsonStr);
-                document.getElementById('jsonEditor').value = JSON.stringify(jsonObj, null, 2);
-                showToast('JSON已格式化', 'success');
-            } catch (error) {
-                showToast('JSON格式错误: ' + error.message, 'error');
-            }
-            enableButton(btn);
-        }
-
-        // 保存JSON配置
-        function saveJsonConfig(btn) {
-            try {
-                const jsonStr = document.getElementById('jsonEditor').value;
-                config = JSON.parse(jsonStr);
-
-                // 验证基本结构
-                if (!config.whisper_api) config.whisper_api = {};
-                if (!config.workflows) config.workflows = [];
-
-                // 更新UI
-                updateUI();
-                showToast('JSON配置已应用，点击"保存所有配置"提交到服务器', 'success');
-            } catch (error) {
-                showToast('JSON格式错误: ' + error.message, 'error');
-            }
-            enableButton(btn);
-        }
-
-        // 保存配置到服务器
-        function saveConfig(btn) {
-            // 首先更新Whisper配置
-            config.whisper_api.url = document.getElementById('whisperApiUrl').value.trim();
-            config.whisper_api.api_key = document.getElementById('whisperApiKey').value.trim();
-
-            fetch('/update_full_config', {
+            fetch('/update_config', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(config)
+                body: JSON.stringify(updatedConfig)
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showToast('配置已成功保存到服务器', 'success');
-                } else {
-                    showToast('保存失败: ' + data.message, 'error');
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "success") {
+                        showMessage(whisperApiSuccess, 'Settings saved successfully!');
+                        setTimeout(() => hideMessage(whisperApiSuccess), 3000);
+                    } else {
+                        showError(whisperApiError, 'Failed to save settings: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving Whisper API config:', error);
+                    showError(whisperApiError, 'An error occurred while saving settings.');
+                })
+                .finally(() => {
+                    hideLoader(whisperApiLoader);
+                });
+        }
+
+        function fetchWhisperModels(showFeedback = true) {
+            if (showFeedback) {
+                showLoader(whisperApiLoader);
+                hideMessage(whisperApiSuccess);
+                hideMessage(whisperApiError);
+            }
+
+            // 检查是否有URL和API Key
+            if (!whisperApiUrl.value.trim()) {
+                if (showFeedback) {
+                    showError(whisperApiError, 'Please enter Whisper API URL first.');
+                    hideLoader(whisperApiLoader);
                 }
-            })
-            .catch(error => {
-                console.error('Error saving config:', error);
-                showToast('保存配置出错: ' + error.message, 'error');
-            })
-            .finally(() => {
-                // 恢复按钮状态
-                enableButton(btn);
-            });
-        }
-
-        // 格式化全屏编辑器的JSON
-        function formatFullscreenJson(btn) {
-            try {
-                const jsonStr = document.getElementById('fullscreenJsonEditor').value;
-                const jsonObj = JSON.parse(jsonStr);
-                document.getElementById('fullscreenJsonEditor').value = JSON.stringify(jsonObj, null, 2);
-                showToast('JSON已格式化', 'success');
-            } catch (error) {
-                showToast('JSON格式错误: ' + error.message, 'error');
-            }
-            enableButton(btn);
-        }
-
-        // 应用全屏编辑器的更改
-        function applyFullscreenEdit(btn) {
-            try {
-                const jsonStr = document.getElementById('fullscreenJsonEditor').value;
-                const newConfig = JSON.parse(jsonStr);
-
-                // 应用更改
-                document.getElementById('jsonEditor').value = jsonStr;
-                config = newConfig;
-                updateUI();
-
-                // 关闭模态框
-                document.getElementById('fullscreenEditorModal').classList.remove('show');
-                showToast('JSON配置已应用，点击"保存所有配置"提交到服务器', 'success');
-            } catch (error) {
-                showToast('JSON格式错误: ' + error.message, 'error');
-            }
-            enableButton(btn);
-        }
-
-        // 测试Whisper连接
-        function testWhisperConnection(btn) {
-            const url = document.getElementById('whisperApiUrl').value.trim();
-            const apiKey = document.getElementById('whisperApiKey').value.trim();
-
-            if (!url) {
-                showToast('请输入API URL', 'error');
-                enableButton(btn);
                 return;
             }
 
-            // 简单测试连接，只验证URL是否可访问
-            fetch(url, {
-                method: 'HEAD',
-                headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
+            fetch('/get_whisper_models', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    url: whisperApiUrl.value.trim(),
+                    api_key: whisperApiKey.value.trim()
+                })
             })
-            .then(response => {
-                if (response.ok) {
-                    showToast('连接成功！服务器可访问', 'success');
-                } else {
-                    showToast(`连接失败: 状态码 ${response.status}`, 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error testing connection:', error);
-                showToast('连接测试失败: ' + error.message, 'error');
-            })
-            .finally(() => {
-                // 恢复按钮状态
-                enableButton(btn);
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        if (showFeedback) {
+                            showError(whisperApiError, 'Failed to fetch models: ' + data.error);
+                        }
+                        return;
+                    }
+
+                    // 更新下拉列表
+                    updateModelDropdown(data.models || []);
+
+                    if (showFeedback) {
+                        showMessage(whisperApiSuccess, `Successfully fetched ${data.models.length} models.`);
+                        setTimeout(() => hideMessage(whisperApiSuccess), 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching models:', error);
+                    if (showFeedback) {
+                        showError(whisperApiError, 'Failed to fetch models: ' + error.message);
+                    }
+                })
+                .finally(() => {
+                    if (showFeedback) {
+                        hideLoader(whisperApiLoader);
+                    }
+                });
+        }
+
+        function updateModelDropdown(models) {
+            modelDropdown.innerHTML = '';
+
+            if (models.length === 0) {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                item.textContent = 'No models found';
+                modelDropdown.appendChild(item);
+                return;
+            }
+
+            models.forEach(model => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                item.textContent = model;
+                item.addEventListener('click', () => {
+                    whisperApiModel.value = model;
+                    hideDropdown();
+                });
+                modelDropdown.appendChild(item);
             });
         }
 
-        // 显示通知
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast';
+        function filterModelDropdown() {
+            const filter = whisperApiModel.value.toLowerCase();
+            const items = modelDropdown.getElementsByClassName('dropdown-item');
 
-            if (type === 'error') {
-                toast.classList.add('error');
+            let hasVisibleItems = false;
+
+            for (let i = 0; i < items.length; i++) {
+                const text = items[i].textContent.toLowerCase();
+                if (text.includes(filter)) {
+                    items[i].style.display = '';
+                    hasVisibleItems = true;
+                } else {
+                    items[i].style.display = 'none';
+                }
             }
 
-            toast.classList.add('show');
-
-            // 3秒后自动隐藏
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
+            if (!hasVisibleItems && items.length > 0) {
+                // 没有匹配项，显示"无匹配"消息
+                if (modelDropdown.querySelector('.no-match') === null) {
+                    const noMatch = document.createElement('div');
+                    noMatch.className = 'dropdown-item no-match';
+                    noMatch.textContent = 'No matching models';
+                    modelDropdown.appendChild(noMatch);
+                }
+            } else {
+                // 移除可能存在的"无匹配"消息
+                const noMatch = modelDropdown.querySelector('.no-match');
+                if (noMatch) {
+                    noMatch.remove();
+                }
+            }
         }
-    </script>
+
+        function setupModelDropdown() {
+            // 点击输入框显示下拉框
+            whisperApiModel.addEventListener('click', () => {
+                showDropdown();
+            });
+
+            // 输入时过滤下拉框
+            whisperApiModel.addEventListener('input', () => {
+                if (!modelDropdown.classList.contains('show')) {
+                    showDropdown();
+                }
+                filterModelDropdown();
+            });
+
+            // 点击其他地方时隐藏下拉框
+            document.addEventListener('click', (e) => {
+                if (!whisperApiModel.contains(e.target) && !modelDropdown.contains(e.target)) {
+                    hideDropdown();
+                }
+            });
+
+            // 键盘事件处理
+            whisperApiModel.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideDropdown();
+                }
+            });
+        }
+
+        function showDropdown() {
+            modelDropdown.classList.add('show');
+        }
+
+        function hideDropdown() {
+            modelDropdown.classList.remove('show');
+        }
+
+        function loadWorkflows() {
+            showLoader(workflowsLoader);
+            fetch('/get_full_config')
+                .then(response => response.json())
+                .then(data => {
+                    renderWorkflows(data.workflows || []);
+                })
+                .catch(error => {
+                    console.error('Error loading workflows:', error);
+                    showError(workflowsError, 'Failed to load workflows.');
+                })
+                .finally(() => {
+                    hideLoader(workflowsLoader);
+                });
+        }
+
+        function renderWorkflows(workflows) {
+            workflowList.innerHTML = '';
+            if (workflows.length === 0) {
+                workflowList.innerHTML = '<div style="text-align: center; padding: 20px; color: #b0b0b0;">No workflows configured.</div>';
+                return;
+            }
+
+            workflows.forEach((workflow, index) => {
+                const workflowItem = document.createElement('div');
+                workflowItem.className = 'workflow-item';
+                workflowItem.innerHTML = `
+                        <div class="workflow-header">
+                            <div class="workflow-title">${escapeHtml(workflow.name)}</div>
+                            <div class="workflow-actions">
+                                <button class="workflow-action-btn edit" title="Edit" onclick="editWorkflow(${index})">✏️</button>
+                                <button class="workflow-action-btn delete" title="Delete" onclick="deleteWorkflow(${index})">🗑️</button>
+                            </div>
+                        </div>
+                        <div class="workflow-details">
+                            <div class="workflow-detail">Type: <span>${workflow.input_type || 'text'}</span></div>
+                            <div class="workflow-detail">API Endpoint: <span>${escapeHtml(workflow.api_endpoint || 'Not set')}</span></div>
+                            <div class="workflow-detail">Description: <span>${escapeHtml(workflow.description || 'No description')}</span></div>
+                        </div>
+                    `;
+                workflowList.appendChild(workflowItem);
+            });
+        }
+
+        function showWorkflowForm(workflow = null) {
+            // 显示表单
+            workflowForm.style.display = 'block';
+            document.getElementById('workflowsContainer').style.display = 'none';
+
+            // 设置表单标题
+            document.getElementById('workflowFormTitle').textContent = workflow ? 'Edit Workflow' : 'Add New Workflow';
+
+            // 填充表单
+            document.getElementById('workflowName').value = workflow ? workflow.name : '';
+            document.getElementById('workflowInputType').value = workflow ? (workflow.input_type || 'text') : 'text';
+            document.getElementById('workflowApiEndpoint').value = workflow ? (workflow.api_endpoint || '') : '';
+            document.getElementById('workflowApiKey').value = workflow ? (workflow.api_key || '') : '';
+            document.getElementById('workflowDescription').value = workflow ? (workflow.description || '') : '';
+            document.getElementById('workflowCustomPrompt').value = workflow ? (workflow.custom_prompt || '') : '';
+
+            // 设置编辑索引
+            document.getElementById('workflowEditIndex').value = workflow ? workflow.index : -1;
+        }
+
+        function hideWorkflowForm() {
+            workflowForm.style.display = 'none';
+            document.getElementById('workflowsContainer').style.display = 'block';
+        }
+
+        function saveWorkflow() {
+            showLoader(workflowsLoader);
+            hideMessage(workflowsSuccess);
+            hideMessage(workflowsError);
+
+            // 获取表单数据
+            const name = document.getElementById('workflowName').value.trim();
+            const inputType = document.getElementById('workflowInputType').value;
+            const apiEndpoint = document.getElementById('workflowApiEndpoint').value.trim();
+            const apiKey = document.getElementById('workflowApiKey').value.trim();
+            const description = document.getElementById('workflowDescription').value.trim();
+            const customPrompt = document.getElementById('workflowCustomPrompt').value.trim();
+            const editIndex = parseInt(document.getElementById('workflowEditIndex').value);
+
+            // 验证
+            if (!name) {
+                showError(workflowsError, 'Workflow name is required.');
+                hideLoader(workflowsLoader);
+                return;
+            }
+
+            // 构建工作流对象
+            const workflow = {
+                name,
+                input_type: inputType,
+                api_endpoint: apiEndpoint,
+                api_key: apiKey,
+                description,
+                custom_prompt: customPrompt
+            };
+
+            // 获取现有配置
+            fetch('/get_full_config')
+                .then(response => response.json())
+                .then(config => {
+                    const workflows = config.workflows || [];
+
+                    if (editIndex >= 0) {
+                        // 编辑现有工作流
+                        workflows[editIndex] = workflow;
+                    } else {
+                        // 添加新工作流
+                        workflows.push(workflow);
+                    }
+
+                    // 更新配置
+                    config.workflows = workflows;
+                    return fetch('/update_full_config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(config)
+                    });
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "success") {
+                        loadWorkflows(); // 重新加载工作流列表
+                        hideWorkflowForm();
+                        showMessage(workflowsSuccess, 'Workflow saved successfully!');
+                        setTimeout(() => hideMessage(workflowsSuccess), 3000);
+                    } else {
+                        showError(workflowsError, 'Failed to save workflow: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving workflow:', error);
+                    showError(workflowsError, 'An error occurred while saving the workflow.');
+                })
+                .finally(() => {
+                    hideLoader(workflowsLoader);
+                });
+        }
+
+        // 工作流编辑和删除函数，使用全局函数以便从HTML中调用
+        window.editWorkflow = function (index) {
+            showLoader(workflowsLoader);
+            fetch('/get_full_config')
+                .then(response => response.json())
+                .then(data => {
+                    const workflow = data.workflows[index];
+                    workflow.index = index; // 添加索引
+                    showWorkflowForm(workflow);
+                })
+                .catch(error => {
+                    console.error('Error loading workflow for edit:', error);
+                    showError(workflowsError, 'Failed to load workflow details.');
+                })
+                .finally(() => {
+                    hideLoader(workflowsLoader);
+                });
+        };
+
+        window.deleteWorkflow = function (index) {
+            if (!confirm('Are you sure you want to delete this workflow?')) {
+                return;
+            }
+
+            showLoader(workflowsLoader);
+            fetch('/get_full_config')
+                .then(response => response.json())
+                .then(config => {
+                    // 删除指定索引的工作流
+                    config.workflows.splice(index, 1);
+
+                    // 更新配置
+                    return fetch('/update_full_config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(config)
+                    });
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "success") {
+                        loadWorkflows(); // 重新加载工作流列表
+                        showMessage(workflowsSuccess, 'Workflow deleted successfully!');
+                        setTimeout(() => hideMessage(workflowsSuccess), 3000);
+                    } else {
+                        showError(workflowsError, 'Failed to delete workflow: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting workflow:', error);
+                    showError(workflowsError, 'An error occurred while deleting the workflow.');
+                })
+                .finally(() => {
+                    hideLoader(workflowsLoader);
+                });
+        };
+
+        // 辅助函数
+        function showLoader(loader) {
+            if (loader) loader.style.display = 'inline-block';
+        }
+
+        function hideLoader(loader) {
+            if (loader) loader.style.display = 'none';
+        }
+
+        function showMessage(element, message) {
+            if (element) {
+                element.textContent = message;
+                element.style.display = 'block';
+            }
+        }
+
+        function hideMessage(element) {
+            if (element) {
+                element.style.display = 'none';
+            }
+        }
+
+        function showError(element, message) {
+            showMessage(element, message);
+            setTimeout(() => hideMessage(element), 5000);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    });
+</script>
 </body>
 </html>
-

@@ -35,7 +35,8 @@ def get_workflows_config():
         return {
             "whisper_api": {
                 "url": "https://whisper.gaia.domains/v1/audio/transcriptions",
-                "api_key": ""
+                "api_key": "",
+                "model": ""
             },
             "workflows": []
         }
@@ -45,7 +46,8 @@ def get_whisper_api_config():
     config = get_workflows_config()
     return (
         config.get("whisper_api", {}).get("url", "https://whisper.gaia.domains/v1/audio/transcriptions"),
-        config.get("whisper_api", {}).get("api_key", "")
+        config.get("whisper_api", {}).get("api_key", ""),
+        config.get("whisper_api", {}).get("model", "")
     )
 
 gaia_api_key = os.getenv("GAIA_API_KEY")
@@ -307,6 +309,41 @@ def download():
     )
 
 
+@app.route("/get_whisper_models", methods=["POST"])
+def get_whisper_models():
+    """获取可用的Whisper模型列表"""
+    try:
+        data = request.get_json()
+        print(data)
+        whisper_url = data.get("url")
+        whisper_api_key = data.get("api_key", "")
+        # 从API URL中提取基础URL
+        base_url_parts = whisper_url.split("/v1/")
+        if len(base_url_parts) > 1:
+            base_url = base_url_parts[0]
+            models_url = f"{base_url}/v1/models"
+        else:
+            # 如果URL结构不是预期的，尝试猜测
+            models_url = whisper_url.rsplit("/", 1)[0].replace("audio/transcriptions", "models")
+
+        print(f"Fetching Whisper models from: {models_url}")
+        headers = {}
+        if whisper_api_key:
+            headers['Authorization'] = f'Bearer {whisper_api_key}'
+
+        with httpx.Client() as client:
+            response = client.get(models_url, headers=headers, timeout=30.0)
+            if response.status_code == 200:
+                models_data = response.json()
+                print(f"Received models data: {models_data}")
+                # 过滤出whisper模型
+                whisper_models = [model['id'] for model in models_data.get('data', [])]
+                return jsonify({"models": whisper_models})
+            else:
+                return jsonify({"models": [], "error": f"Failed to get models: {response.status_code}"}), response.status_code
+    except Exception as e:
+        return jsonify({"models": [], "error": f"Error fetching models: {str(e)}"}), 500
+
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
     """处理音频转文字的接口，使用WebSocket通知进度"""
@@ -373,26 +410,63 @@ def transcribe():
                 else:
                     data = {}
 
-                buf.seek(0)
-                file_bytes = buf.getvalue()
-                files_httpx = {"file": ("audio.wav", file_bytes, "audio/wav")}
-
                 # 动态获取 Whisper API 配置
-                whisper_url, whisper_api_key = get_whisper_api_config()
+                whisper_url, whisper_api_key, whisper_model = get_whisper_api_config()
                 headers = {}
                 if whisper_api_key:
                     headers['Authorization'] = f'Bearer {whisper_api_key}'
 
-                response = client.post(
-                    whisper_url,
-                    files=files_httpx,
-                    data=data,
-                    headers=headers,
-                    timeout=120.0
-                )
-                transcript = response.json()
-                if transcript:
-                    previous_duration = sum(len(merged_audio_group[j]) for j in range(i))
+                # 如果设置了模型，添加到请求数据中
+                if whisper_model:
+                    data['model'] = whisper_model
+
+                # 添加重试机制，最多尝试3次
+                max_retries = 3
+                retry_delay = 2  # 初始延迟2秒
+                success = False
+                transcript = None
+
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        buf.seek(0)
+                        file_bytes = buf.getvalue()
+                        files_httpx = {"file": ("audio.wav", file_bytes, "audio/wav")}
+
+                        response = client.post(
+                            whisper_url,
+                            files=files_httpx,
+                            data=data,
+                            headers=headers,
+                            timeout=120.0
+                        )
+
+                        if response.status_code == 200:
+                            transcript = response.json()
+                            success = True
+                            break
+                        else:
+                            socketio.emit('workflow_progress', {
+                                'task_id': task_id,
+                                'step': f'transcribe_{i+1}_retry',
+                                'message': f'Attempt {attempt}/{max_retries} failed with status code {response.status_code}. Retrying...'
+                            })
+                    except Exception as e:
+                        socketio.emit('workflow_progress', {
+                            'task_id': task_id,
+                            'step': f'transcribe_{i+1}_retry',
+                            'message': f'Attempt {attempt}/{max_retries} failed: {str(e)}. Retrying...'
+                        })
+
+                    # 如果不是最后一次尝试，则等待后重试
+                    if attempt < max_retries:
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # 指数退避
+
+                # 处理转录结果或失败情况
+                previous_duration = sum(len(merged_audio_group[j]) for j in range(i))
+
+                if success and transcript:
+                    # 处理成功获取的转录结果
                     if "text" in transcript:
                         text_content = transcript["text"]
                         adjusted_lines = []
@@ -425,7 +499,27 @@ def transcribe():
                         transcripts += "\n" + transcript["text"]
                         socketio.emit('workflow_progress', {'task_id': task_id, 'step': f'transcribe_{i+1}_done', 'message': f'Group {i+1} transcription completed'})
                 else:
-                    socketio.emit('workflow_progress', {'task_id': task_id, 'step': f'transcribe_{i+1}_fail', 'message': f'Group {i+1} transcription failed'})
+                    # 处理转录失败的情况 - 添加空的时间段标记
+                    audio_duration_ms = len(audio)
+                    start_ms = previous_duration
+                    end_ms = start_ms + audio_duration_ms
+
+                    adjusted_start = f"{int(start_ms / 3600000):02d}:{int((start_ms % 3600000) / 60000):02d}:{int((start_ms % 60000) / 1000):02d}.{int(start_ms % 1000):03d}"
+                    adjusted_end = f"{int(end_ms / 3600000):02d}:{int((end_ms % 3600000) / 60000):02d}:{int((end_ms % 60000) / 1000):02d}.{int(end_ms % 1000):03d}"
+
+                    empty_transcript = f"[{adjusted_start} --> {adjusted_end}] "
+
+                    if not transcripts:
+                        transcripts = empty_transcript
+                    else:
+                        transcripts += "\n" + empty_transcript
+
+                    socketio.emit('workflow_progress', {
+                        'task_id': task_id,
+                        'step': f'transcribe_{i+1}_skip',
+                        'message': f'Group {i+1} transcription failed after {max_retries} attempts. Adding empty segment and continuing.'
+                    })
+
         # Return transcription result
         socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed', 'result': transcripts})
 

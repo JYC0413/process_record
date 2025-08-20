@@ -347,6 +347,55 @@
                 padding: 10px 20px;
             }
         }
+
+        /* 搜索框下拉菜单样式 */
+        .search-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-input {
+            width: 100%;
+            padding-right: 40px; /* 为下拉箭头留空间 */
+        }
+
+        .dropdown-arrow {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+        }
+
+        .dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #1f1f3f;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-top: 5px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .dropdown-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .dropdown-list.show {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -375,8 +424,20 @@
                             <label>Whisper API Key:</label>
                             <input type="password" id="whisperApiKey" name="whisper_api_key" placeholder="Enter API Key" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
                         </div>
+                        <div class="form-group">
+                            <label>Whisper Model:</label>
+                            <div class="search-container">
+                                <input type="text" id="whisperApiModel" name="whisper_api_model" placeholder="Select or type model name" style="width:100%;padding:12px 16px;padding-right:40px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                                <span class="dropdown-arrow">▼</span>
+                                <div id="modelDropdown" class="dropdown-list">
+                                    <!-- Models will be loaded here -->
+                                    <div class="dropdown-item">Loading models...</div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="btn-container">
                             <button type="submit" class="btn" id="saveSettingsBtn">Save Settings</button>
+                            <button type="button" class="btn" id="fetchModelsBtn" style="background:linear-gradient(135deg, #3498db 0%, #2980b9 100%);">Fetch Models</button>
                             <div class="loader" id="settingsLoader" style="display:none;"></div>
                         </div>
                     </form>
@@ -597,6 +658,9 @@
             const settingsSaved = document.getElementById('settingsSaved');
             const whisperApiUrl = document.getElementById('whisperApiUrl');
             const whisperApiKey = document.getElementById('whisperApiKey');
+            const whisperApiModel = document.getElementById('whisperApiModel');
+            const fetchModelsBtn = document.getElementById('fetchModelsBtn');
+            const modelDropdown = document.getElementById('modelDropdown');
 
             // 当用户点击设置按钮时，打开模态框
             btn.onclick = function() {
@@ -631,11 +695,25 @@
                         const whisperConfig = data.whisper_api || {};
                         whisperApiUrl.value = whisperConfig.url || "";
                         whisperApiKey.value = whisperConfig.api_key || "";
+                        whisperApiModel.value = whisperConfig.model || "";
+
+                        // 如果有URL和Key，自动尝试获取模型列表
+                        if (whisperConfig.url && whisperConfig.api_key) {
+                            fetchWhisperModels(false); // 静默获取
+                        }
                     })
                     .catch(error => {
                         console.error('Error loading settings:', error);
                     });
             }
+
+            // 处理模型下拉框交互
+            setupModelDropdown();
+
+            // 获取模型列表按钮
+            fetchModelsBtn.addEventListener('click', function() {
+                fetchWhisperModels(true);
+            });
 
             // 保存设置
             settingsForm.onsubmit = function(e) {
@@ -648,7 +726,8 @@
                 const updatedConfig = {
                     whisper_api: {
                         url: whisperApiUrl.value.trim() || "https://whisper.gaia.domains/v1/audio/transcriptions",
-                        api_key: whisperApiKey.value.trim() || ""
+                        api_key: whisperApiKey.value.trim() || "",
+                        model: whisperApiModel.value.trim() || ""
                     }
                 };
 
@@ -681,6 +760,153 @@
                     // 重新启用保存按钮
                     enableButton(saveBtn);
                 });
+            }
+
+            // 获取可用的Whisper模型
+            function fetchWhisperModels(showFeedback = true) {
+                if (showFeedback) {
+                    disableButton(fetchModelsBtn, 'Fetching...');
+                }
+
+                // 检查是否有URL
+                if (!whisperApiUrl.value.trim()) {
+                    if (showFeedback) {
+                        alert('Please enter Whisper API URL first');
+                        enableButton(fetchModelsBtn);
+                    }
+                    return;
+                }
+
+                fetch('/get_whisper_models', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            url: whisperApiUrl.value.trim(),
+                            api_key: whisperApiKey.value.trim()
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            if (showFeedback) {
+                                alert('Failed to fetch models: ' + data.error);
+                            }
+                            return;
+                        }
+
+                        // 更新下拉列表
+                        updateModelDropdown(data.models || []);
+
+                        if (showFeedback) {
+                            alert(`Successfully fetched ${data.models.length} models.`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching models:', error);
+                        if (showFeedback) {
+                            alert('Failed to fetch models: ' + error.message);
+                        }
+                    })
+                    .finally(() => {
+                        if (showFeedback) {
+                            enableButton(fetchModelsBtn);
+                        }
+                    });
+            }
+
+            function updateModelDropdown(models) {
+                modelDropdown.innerHTML = '';
+
+                if (models.length === 0) {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    item.textContent = 'No models found';
+                    modelDropdown.appendChild(item);
+                    return;
+                }
+
+                models.forEach(model => {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    item.textContent = model;
+                    item.addEventListener('click', () => {
+                        whisperApiModel.value = model;
+                        hideDropdown();
+                    });
+                    modelDropdown.appendChild(item);
+                });
+            }
+
+            function filterModelDropdown() {
+                const filter = whisperApiModel.value.toLowerCase();
+                const items = modelDropdown.getElementsByClassName('dropdown-item');
+
+                let hasVisibleItems = false;
+
+                for (let i = 0; i < items.length; i++) {
+                    const text = items[i].textContent.toLowerCase();
+                    if (text.includes(filter)) {
+                        items[i].style.display = '';
+                        hasVisibleItems = true;
+                    } else {
+                        items[i].style.display = 'none';
+                    }
+                }
+
+                if (!hasVisibleItems && items.length > 0) {
+                    // 没有匹配项，显示"无匹配"消息
+                    if (modelDropdown.querySelector('.no-match') === null) {
+                        const noMatch = document.createElement('div');
+                        noMatch.className = 'dropdown-item no-match';
+                        noMatch.textContent = 'No matching models';
+                        modelDropdown.appendChild(noMatch);
+                    }
+                } else {
+                    // 移除可能存在的"无匹配"消息
+                    const noMatch = modelDropdown.querySelector('.no-match');
+                    if (noMatch) {
+                        noMatch.remove();
+                    }
+                }
+            }
+
+            function setupModelDropdown() {
+                // 点击输入框显示下拉框
+                whisperApiModel.addEventListener('click', () => {
+                    showDropdown();
+                });
+
+                // 输入时过滤下拉框
+                whisperApiModel.addEventListener('input', () => {
+                    if (!modelDropdown.classList.contains('show')) {
+                        showDropdown();
+                    }
+                    filterModelDropdown();
+                });
+
+                // 点击其他地方时隐藏下拉框
+                document.addEventListener('click', (e) => {
+                    if (!whisperApiModel.contains(e.target) && !modelDropdown.contains(e.target)) {
+                        hideDropdown();
+                    }
+                });
+
+                // 键盘事件处理
+                whisperApiModel.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        hideDropdown();
+                    }
+                });
+            }
+
+            function showDropdown() {
+                modelDropdown.classList.add('show');
+            }
+
+            function hideDropdown() {
+                modelDropdown.classList.remove('show');
             }
         });
 
