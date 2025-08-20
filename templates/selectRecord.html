@@ -662,6 +662,22 @@
             const fetchModelsBtn = document.getElementById('fetchModelsBtn');
             const modelDropdown = document.getElementById('modelDropdown');
 
+            // 存储Whisper API设置到localStorage
+            function saveSettingsToLocalStorage() {
+                const settings = {
+                    url: whisperApiUrl.value.trim() || "https://whisper.gaia.domains/v1/audio/transcriptions",
+                    api_key: whisperApiKey.value.trim() || "",
+                    model: whisperApiModel.value.trim() || ""
+                };
+                localStorage.setItem('whisperApiSettings', JSON.stringify(settings));
+            }
+
+            // 从localStorage读取Whisper API设置
+            function getSettingsFromLocalStorage() {
+                const settings = localStorage.getItem('whisperApiSettings');
+                return settings ? JSON.parse(settings) : null;
+            }
+
             // 当用户点击设置按钮时，打开模态框
             btn.onclick = function() {
                 // 打开模态框前加载当前设置
@@ -689,22 +705,37 @@
 
             // 加载当前设置
             function loadCurrentSettings() {
-                fetch('/get_config')
-                    .then(response => response.json())
-                    .then(data => {
-                        const whisperConfig = data.whisper_api || {};
-                        whisperApiUrl.value = whisperConfig.url || "";
-                        whisperApiKey.value = whisperConfig.api_key || "";
-                        whisperApiModel.value = whisperConfig.model || "";
+                // 首先尝试从localStorage加载
+                const localSettings = getSettingsFromLocalStorage();
 
-                        // 如果有URL和Key，自动尝试获取模型列表
-                        if (whisperConfig.url && whisperConfig.api_key) {
-                            fetchWhisperModels(false); // 静默获取
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading settings:', error);
-                    });
+                if (localSettings) {
+                    whisperApiUrl.value = localSettings.url || "";
+                    whisperApiKey.value = localSettings.api_key || "";
+                    whisperApiModel.value = localSettings.model || "";
+
+                    // 如果有URL和Key，自动尝试获取模型列表
+                    if (localSettings.url && localSettings.api_key) {
+                        fetchWhisperModels(false); // 静默获取
+                    }
+                } else {
+                    // 如果localStorage中没有，则从服务器获取默认设置
+                    fetch('/get_config')
+                        .then(response => response.json())
+                        .then(data => {
+                            const whisperConfig = data.whisper_api || {};
+                            whisperApiUrl.value = whisperConfig.url || "";
+                            whisperApiKey.value = whisperConfig.api_key || "";
+                            whisperApiModel.value = whisperConfig.model || "";
+
+                            // 如果有URL和Key，自动尝试获取模型列表
+                            if (whisperConfig.url && whisperConfig.api_key) {
+                                fetchWhisperModels(false); // 静默获取
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error loading settings from server:', error);
+                        });
+                }
             }
 
             // 处理模型下拉框交互
@@ -723,43 +754,19 @@
                 const saveBtn = document.getElementById('saveSettingsBtn');
                 disableButton(saveBtn, 'Saving...');
 
-                const updatedConfig = {
-                    whisper_api: {
-                        url: whisperApiUrl.value.trim() || "https://whisper.gaia.domains/v1/audio/transcriptions",
-                        api_key: whisperApiKey.value.trim() || "",
-                        model: whisperApiModel.value.trim() || ""
-                    }
-                };
+                // 保存到localStorage
+                saveSettingsToLocalStorage();
 
-                fetch('/update_config', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(updatedConfig)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === "success") {
-                        // 显示成功消息
-                        settingsSaved.style.display = "block";
+                // 显示成功消息
+                settingsSaved.style.display = "block";
 
-                        // 3秒后自动隐藏成功消息
-                        setTimeout(() => {
-                            settingsSaved.style.display = "none";
-                        }, 3000);
-                    } else {
-                        alert("Failed to save settings: " + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error saving settings:', error);
-                    alert("An error occurred while saving settings");
-                })
-                .finally(() => {
-                    // 重新启用保存按钮
-                    enableButton(saveBtn);
-                });
+                // 3秒后自动隐藏成功消息
+                setTimeout(() => {
+                    settingsSaved.style.display = "none";
+                }, 3000);
+
+                // 重新启用保存按钮
+                enableButton(saveBtn);
             }
 
             // 获取可用的Whisper模型
@@ -1056,12 +1063,24 @@
                 startAudioWorkflow(this);
             });
 
-            // 文本处理按钮事件
+            // 文本处理按钮��件
             document.getElementById('btnStartTextWorkflow').addEventListener('click', function() {
                 disableButton(this, 'Processing...');
                 startTextWorkflow(this);
             });
         });
+
+        // 获取当前Whisper API设置，首先从localStorage获取，如果没有再使用服务器设置
+        function getCurrentWhisperSettings() {
+            // 尝试从localStorage获取
+            const localSettings = localStorage.getItem('whisperApiSettings');
+            if (localSettings) {
+                return JSON.parse(localSettings);
+            }
+
+            // 如果没有本地设置，返回null（调用方负责从服务器获取默认值）
+            return null;
+        }
 
         // 开始转录流程 - 使用新的/transcribe接口
         function startTranscription(btn) {
@@ -1084,6 +1103,14 @@
             formData.set('start_time', toUTCString(startTime));
             formData.set('end_time', toUTCString(endTime));
             formData.set('language', selectedLanguage);
+
+            // 添加Whisper API设置
+            const whisperSettings = getCurrentWhisperSettings();
+            if (whisperSettings) {
+                formData.set('whisper_api_url', whisperSettings.url);
+                formData.set('whisper_api_key', whisperSettings.api_key);
+                formData.set('whisper_api_model', whisperSettings.model);
+            }
 
             const socket = io();
             let steps = [];
@@ -1160,6 +1187,14 @@
             formData.set('selected_workflow', selectedWorkflow);
             formData.set('input_type', 'audio');
 
+            // 添加Whisper API设置
+            const whisperSettings = getCurrentWhisperSettings();
+            if (whisperSettings) {
+                formData.set('whisper_api_url', whisperSettings.url);
+                formData.set('whisper_api_key', whisperSettings.api_key);
+                formData.set('whisper_api_model', whisperSettings.model);
+            }
+
             if (selectedWorkflow.includes('Custom API')) {
                 const apiUrl = document.getElementById('audioApiUrl').value;
                 const apiKey = document.getElementById('audioApiKey').value;
@@ -1228,6 +1263,14 @@
             formData.set('selected_workflow', selectedWorkflow);
             formData.set('transcript', transcript);
             formData.set('input_type', 'text');
+
+            // 添加Whisper API设置
+            const whisperSettings = getCurrentWhisperSettings();
+            if (whisperSettings) {
+                formData.set('whisper_api_url', whisperSettings.url);
+                formData.set('whisper_api_key', whisperSettings.api_key);
+                formData.set('whisper_api_model', whisperSettings.model);
+            }
 
             if (selectedWorkflow.includes('Custom API')) {
                 const apiUrl = document.getElementById('textApiUrl').value;
@@ -1381,6 +1424,14 @@
                 const formData = new FormData();
                 formData.append('start_time', toUTCString(startInput.value));
                 formData.append('end_time', toUTCString(endInput.value));
+
+                // 添加Whisper API设置
+                const whisperSettings = getCurrentWhisperSettings();
+                if (whisperSettings) {
+                    formData.append('whisper_api_url', whisperSettings.url);
+                    formData.append('whisper_api_key', whisperSettings.api_key);
+                    formData.append('whisper_api_model', whisperSettings.model);
+                }
 
                 try {
                     const resp = await fetch('/download', {
