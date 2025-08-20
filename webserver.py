@@ -145,7 +145,7 @@ def get_files_in_range(start_time, end_time):
     return [fname for ts, fname in files]
 
 
-def merge_wav_files_grouped(file_list, max_duration=60):
+def merge_wav_files_grouped(file_list, max_duration=30):
     """
     合并音频文件，每组总时长不超过 max_duration（秒），返回分组后的 AudioSegment 列表
     """
