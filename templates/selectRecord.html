@@ -1221,8 +1221,8 @@
                     folderItem.className = 'dropdown-item';
 
                     // 转换UTC时间为本地时间
-                    const startDate = new Date(folder.start_time);
-                    const endDate = new Date(folder.end_time);
+                    const startDate = new Date(folder.start_time + "Z");
+                    const endDate = new Date(folder.end_time + "Z");
                     const localStartTime = startDate.toLocaleString();
                     const localEndTime = endDate.toLocaleString();
 
