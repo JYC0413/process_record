@@ -1228,8 +1228,8 @@
 
                     folderItem.textContent = folder.folder_name + ' (' + localStartTime + ' - ' + localEndTime + ')';
                     folderItem.dataset.folderPath = folder.folder_path;
-                    folderItem.dataset.startTime = folder.start_time;
-                    folderItem.dataset.endTime = folder.end_time;
+                    folderItem.dataset.startTime = localStartTime;
+                    folderItem.dataset.endTime = localEndTime;
                     folderItem.dataset.fileCount = folder.file_count;
                     folderItem.dataset.durationMinutes = folder.duration_minutes;
 
