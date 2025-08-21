@@ -806,11 +806,11 @@
                 const endTime = new Date(item.dataset.utcEndTime);
 
                 const displayStartTime = isUTC ?
-                    item.dataset.utcStartTime.replace('T', ' ').replace('Z', '').replaceAll('-', '/').split(".")[0] :
+                    item.dataset.utcStartTime.replace('T', ' ').replace('Z', '').replaceAll('-0', '/').replaceAll('-', '/').split(".")[0] :
                     new Date(item.dataset.utcStartTime).toLocaleString();
 
                 const displayEndTime = isUTC ?
-                    item.dataset.utcEndTime.replace('T', ' ').replace('Z', '').replaceAll('-', '/').split(".")[0] :
+                    item.dataset.utcEndTime.replace('T', ' ').replace('Z', '').replaceAll('-0', '/').replaceAll('-', '/').split(".")[0] :
                     new Date(item.dataset.utcEndTime).toLocaleString();
 
                 // 更新文本显示
