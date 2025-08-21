@@ -1027,8 +1027,8 @@
         document.getElementById('workflowProgressBar').style.display = '';
 
         const formData = new FormData();
-        formData.set('start_time', toUTCString(startTime));
-        formData.set('end_time', toUTCString(endTime));
+        formData.set('start_time', isUTC ? startTime : toUTCString(startTime));
+        formData.set('end_time', isUTC ? endTime : toUTCString(endTime));
         formData.set('language', selectedLanguage);
 
         // 添加文件夹路径
@@ -1107,8 +1107,8 @@
         }
 
         const formData = new FormData();
-        formData.set('start_time', toUTCString(startTime));
-        formData.set('end_time', toUTCString(endTime));
+        formData.set('start_time', isUTC ? startTime : toUTCString(startTime));
+        formData.set('end_time', isUTC ? endTime : toUTCString(endTime));
         formData.set('selected_workflow', selectedWorkflow);
         formData.set('input_type', 'audio');
 
@@ -1181,8 +1181,8 @@
         }
 
         const formData = new FormData();
-        formData.set('start_time', toUTCString(startTime));
-        formData.set('end_time', toUTCString(endTime));
+        formData.set('start_time', isUTC ? startTime : toUTCString(startTime));
+        formData.set('end_time', isUTC ? endTime : toUTCString(endTime));
         formData.set('selected_workflow', selectedWorkflow);
         formData.set('transcript', transcript);
         formData.set('input_type', 'text');
