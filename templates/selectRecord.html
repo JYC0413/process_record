@@ -296,14 +296,16 @@
             display: none;
             width: 20px;
             height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
+            border: 3px solid rgba(255, 255, 255, .3);
             border-radius: 50%;
             border-top-color: #fff;
             animation: spin 1s linear infinite;
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         #workflowResult {
@@ -450,453 +452,447 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header-container">
-            <h1>Meeting Audio Processing</h1>
-            <div style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; gap: 10px;">
-                <button onclick="window.open('/config','_blank')" class="settings-btn" title="Settings">⚙️</button>
+<div class="container">
+    <div class="header-container">
+        <h1>Meeting Audio Processing</h1>
+        <div style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; gap: 10px;">
+            <button onclick="window.open('/config','_blank')" class="settings-btn" title="Settings">⚙️</button>
+        </div>
+    </div>
+
+    <div class="tab-container">
+        <button class="tab-btn-header active" onclick="openTab(event, 'downloadTab')">
+            <span class="tab-icon">🎧</span>
+            Download Audio
+        </button>
+        <button class="tab-btn-header" onclick="openTab(event, 'workflowTab')">
+            <span class="tab-icon">🔄</span>
+            Send to Workflow
+        </button>
+    </div>
+
+    <!-- 新增：文件夹选择部分 -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-icon">📁</div>
+            <h2>Select Recording Folder</h2>
+        </div>
+        <div class="form-group">
+            <div class="search-container">
+                <input type="text" id="folderSearchInput" class="search-input" placeholder="Search or select a folder"
+                       style="width:100%;padding:12px 16px;padding-right:40px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                <span class="dropdown-arrow">▼</span>
+                <div id="folderDropdown" class="dropdown-list">
+                    <div class="dropdown-item" data-folder-path="" data-start-time="" data-end-time="">All Folders</div>
+                    <!-- Folders will be loaded here -->
+                </div>
             </div>
         </div>
-
-        <div class="tab-container">
-            <button class="tab-btn-header active" onclick="openTab(event, 'downloadTab')">
-                <span class="tab-icon">🎧</span>
-                Download Audio
-            </button>
-            <button class="tab-btn-header" onclick="openTab(event, 'workflowTab')">
-                <span class="tab-icon">🔄</span>
-                Send to Workflow
-            </button>
+        <div id="selectedFolderInfo" style="margin-top: 10px; font-size: 0.9rem; color: #b0b0b0; display: none;">
+            <!-- Selected folder info will be shown here -->
         </div>
+    </div>
 
-        <!-- 新增：文件夹选择部分 -->
+    <div id="downloadTab" class="tab-content active">
         <div class="section">
             <div class="section-header">
-                <div class="section-icon">📁</div>
-                <h2>Select Recording Folder</h2>
+                <div class="section-icon">📥</div>
+                <h2>Select Time Range for Audio Download</h2>
             </div>
-            <div class="form-group">
-                <div class="search-container">
-                    <input type="text" id="folderSearchInput" class="search-input" placeholder="Search or select a folder" style="width:100%;padding:12px 16px;padding-right:40px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                    <span class="dropdown-arrow">▼</span>
-                    <div id="folderDropdown" class="dropdown-list">
-                        <div class="dropdown-item" data-folder-path="" data-start-time="" data-end-time="">All Folders</div>
-                        <!-- Folders will be loaded here -->
-                    </div>
+            <form id="downloadForm" method="post" action="/download">
+                <div class="form-group">
+                    <label>Start Time:</label>
+                    <input type="datetime-local" name="start_time" required step="1">
                 </div>
-            </div>
-            <div id="selectedFolderInfo" style="margin-top: 10px; font-size: 0.9rem; color: #b0b0b0; display: none;">
-                <!-- Selected folder info will be shown here -->
-            </div>
+                <div class="form-group">
+                    <label>End Time:</label>
+                    <input type="datetime-local" name="end_time" required step="1">
+                </div>
+                <!-- 添加隐藏的文件夹路径输入 -->
+                <input type="hidden" name="folder_path" id="downloadFolderPath" value="">
+                <div class="btn-container">
+                    <button type="submit" class="btn">Download Merged Audio</button>
+                    <div class="loader" id="downloadLoader"></div>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <div id="downloadTab" class="tab-content active">
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-icon">📥</div>
-                    <h2>Select Time Range for Audio Download</h2>
-                </div>
-                <form id="downloadForm" method="post" action="/download">
-                    <div class="form-group">
-                        <label>Start Time:</label>
-                        <input type="datetime-local" name="start_time" required step="1">
-                    </div>
-                    <div class="form-group">
-                        <label>End Time:</label>
-                        <input type="datetime-local" name="end_time" required step="1">
-                    </div>
-                    <!-- 添加隐藏的文件夹路径输入 -->
-                    <input type="hidden" name="folder_path" id="downloadFolderPath" value="">
-                    <div class="btn-container">
-                        <button type="submit" class="btn">Download Merged Audio</button>
-                        <div class="loader" id="downloadLoader"></div>
-                    </div>
-                </form>
+    <div id="workflowTab" class="tab-content">
+        <div class="section">
+            <div class="section-header">
+                <div class="section-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">🔄</div>
+                <h2>Send Merged Audio to Workflow</h2>
             </div>
-        </div>
-
-        <div id="workflowTab" class="tab-content">
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">🔄</div>
-                    <h2>Send Merged Audio to Workflow</h2>
+            <form id="workflowForm" method="post">
+                <div class="form-group">
+                    <label>Start Time:</label>
+                    <input type="datetime-local" name="start_time" required step="1">
                 </div>
-                <form id="workflowForm" method="post">
-                    <div class="form-group">
-                        <label>Start Time:</label>
-                        <input type="datetime-local" name="start_time" required step="1">
-                    </div>
-                    <div class="form-group">
-                        <label>End Time:</label>
-                        <input type="datetime-local" name="end_time" required step="1">
-                    </div>
-                    <!-- 添加隐藏的文件夹路径输入 -->
-                    <input type="hidden" name="folder_path" id="workflowFolderPath" value="">
+                <div class="form-group">
+                    <label>End Time:</label>
+                    <input type="datetime-local" name="end_time" required step="1">
+                </div>
+                <!-- 添加隐藏的文件夹路径输入 -->
+                <input type="hidden" name="folder_path" id="workflowFolderPath" value="">
 
-                    <!-- 处理类型选择 -->
+                <!-- 处理类型选择 -->
+                <div class="form-group">
+                    <label>Processing Type:</label>
+                    <div class="tab-container" style="margin-bottom:15px;">
+                        <button type="button" class="tab-btn active" id="processAudio">
+                            <span class="tab-icon">🔊</span>
+                            Process Audio Directly
+                        </button>
+                        <button type="button" class="tab-btn" id="processText">
+                            <span class="tab-icon">📝</span>
+                            Process Transcript
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 音频处理流程 (默认显示) -->
+                <div id="audioProcessSection">
                     <div class="form-group">
-                        <label>Processing Type:</label>
-                        <div class="tab-container" style="margin-bottom:15px;">
-                            <button type="button" class="tab-btn active" id="processAudio">
-                                <span class="tab-icon">🔊</span>
-                                Process Audio Directly
-                            </button>
-                            <button type="button" class="tab-btn" id="processText">
-                                <span class="tab-icon">📝</span>
-                                Process Transcript
-                            </button>
+                        <label for="audioWorkflowSelect">Select Audio Workflow:</label>
+                        <select id="audioWorkflowSelect" name="selected_workflow"
+                                style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                            <option value="">-- Select a workflow --</option>
+                        </select>
+                        <div id="audioWorkflowDescription" style="margin-top:8px;font-size:0.9rem;color:#b0b0b0;"></div>
+                    </div>
+
+                    <!-- 自定义API URL (音频) -->
+                    <div id="audioApiUrlSection" style="display:none;">
+                        <div class="form-group">
+                            <label for="audioApiUrl">API URL:</label>
+                            <input type="text" id="audioApiUrl" name="audio_api_url"
+                                   placeholder="http://your-api/handle"
+                                   style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                        </div>
+                        <!-- 添加API Key输入字段 -->
+                        <div class="form-group">
+                            <label for="audioApiKey">API Key (optional):</label>
+                            <input type="text" id="audioApiKey" name="audio_api_key" placeholder="Your API Key"
+                                   style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
                         </div>
                     </div>
 
-                    <!-- 音频处理流程 (默认显示) -->
-                    <div id="audioProcessSection">
+                    <div class="btn-container">
+                        <button type="button" class="btn" id="btnStartAudioWorkflow">Start Audio Processing</button>
+                        <div class="loader" id="audioProcessLoader" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- 文本处理流程 (默认隐藏) -->
+                <div id="textProcessSection" style="display:none;">
+                    <div class="form-group" id="transcribeStatusSection">
+                        <!-- 添加语言选择下拉菜单 -->
                         <div class="form-group">
-                            <label for="audioWorkflowSelect">Select Audio Workflow:</label>
-                            <select id="audioWorkflowSelect" name="selected_workflow" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                            <label for="languageSelect">Recognition Language:</label>
+                            <select id="languageSelect" name="language"
+                                    style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                                <option value="auto">Auto-detect (Default)</option>
+                                <option value="zh">Chinese (中文)</option>
+                                <option value="en">English</option>
+                                <option value="es">Spanish (Español)</option>
+                                <option value="fr">French (Français)</option>
+                                <option value="de">German (Deutsch)</option>
+                                <option value="ja">Japanese (日本語)</option>
+                                <option value="ko">Korean (한국어)</option>
+                                <option value="ru">Russian (Русский)</option>
+                                <option value="pt">Portuguese (Português)</option>
+                                <option value="ar">Arabic (العربية)</option>
+                                <option value="hi">Hindi (हिन्दी)</option>
+                                <option value="it">Italian (Italiano)</option>
+                            </select>
+                        </div>
+                        <div class="btn-container">
+                            <button type="button" class="btn" id="btnStartTranscription">Start Transcription</button>
+                        </div>
+                    </div>
+
+                    <!-- 转录结果部分 (开始隐藏) -->
+                    <div id="transcribeResultSection" style="display:none;">
+                        <div class="form-group">
+                            <label for="transcribeTextarea">Recognition Result (editable):</label>
+                            <textarea id="transcribeTextarea" name="transcript" style="min-height:120px;"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="textWorkflowSelect">Select Text Workflow:</label>
+                            <select id="textWorkflowSelect" name="selected_workflow"
+                                    style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
                                 <option value="">-- Select a workflow --</option>
                             </select>
-                            <div id="audioWorkflowDescription" style="margin-top:8px;font-size:0.9rem;color:#b0b0b0;"></div>
+                            <div id="textWorkflowDescription"
+                                 style="margin-top:8px;font-size:0.9rem;color:#b0b0b0;"></div>
                         </div>
 
-                        <!-- 自定义API URL (音频) -->
-                        <div id="audioApiUrlSection" style="display:none;">
+                        <!-- 自定义API URL (文本) -->
+                        <div id="textApiUrlSection" style="display:none;">
                             <div class="form-group">
-                                <label for="audioApiUrl">API URL:</label>
-                                <input type="text" id="audioApiUrl" name="audio_api_url" placeholder="http://your-api/handle" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                                <label for="textApiUrl">API URL:</label>
+                                <input type="text" id="textApiUrl" name="text_api_url"
+                                       placeholder="http://your-api/handle"
+                                       style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
                             </div>
                             <!-- 添加API Key输入字段 -->
                             <div class="form-group">
-                                <label for="audioApiKey">API Key (optional):</label>
-                                <input type="text" id="audioApiKey" name="audio_api_key" placeholder="Your API Key" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                                <label for="textApiKey">API Key (optional):</label>
+                                <input type="text" id="textApiKey" name="text_api_key" placeholder="Your API Key"
+                                       style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                            </div>
+                        </div>
+
+                        <!-- 自定义提示词部分 -->
+                        <div id="customPromptSection" style="display:none;">
+                            <div class="form-group">
+                                <label for="customPrompt">Custom Prompt:</label>
+                                <textarea name="custom_prompt" id="customPrompt"
+                                          placeholder="Enter a custom prompt for the AI..."></textarea>
                             </div>
                         </div>
 
                         <div class="btn-container">
-                            <button type="button" class="btn" id="btnStartAudioWorkflow">Start Audio Processing</button>
-                            <div class="loader" id="audioProcessLoader" style="display:none;"></div>
+                            <button type="button" class="btn" id="btnStartTextWorkflow">Process Text</button>
+                            <div class="loader" id="textProcessLoader" style="display:none;"></div>
                         </div>
                     </div>
-
-                    <!-- 文本处理流程 (默认隐藏) -->
-                    <div id="textProcessSection" style="display:none;">
-                        <div class="form-group" id="transcribeStatusSection">
-                            <!-- 添加语言选择下拉菜单 -->
-                            <div class="form-group">
-                                <label for="languageSelect">Recognition Language:</label>
-                                <select id="languageSelect" name="language" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                                    <option value="auto">Auto-detect (Default)</option>
-                                    <option value="zh">Chinese (中文)</option>
-                                    <option value="en">English</option>
-                                    <option value="es">Spanish (Español)</option>
-                                    <option value="fr">French (Français)</option>
-                                    <option value="de">German (Deutsch)</option>
-                                    <option value="ja">Japanese (日本語)</option>
-                                    <option value="ko">Korean (한국어)</option>
-                                    <option value="ru">Russian (Русский)</option>
-                                    <option value="pt">Portuguese (Português)</option>
-                                    <option value="ar">Arabic (العربية)</option>
-                                    <option value="hi">Hindi (हिन्दी)</option>
-                                    <option value="it">Italian (Italiano)</option>
-                                </select>
-                            </div>
-                            <div class="btn-container">
-                                <button type="button" class="btn" id="btnStartTranscription">Start Transcription</button>
-                            </div>
-                        </div>
-
-                        <!-- 转录结果部分 (开始隐藏) -->
-                        <div id="transcribeResultSection" style="display:none;">
-                            <div class="form-group">
-                                <label for="transcribeTextarea">Recognition Result (editable):</label>
-                                <textarea id="transcribeTextarea" name="transcript" style="min-height:120px;"></textarea>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="textWorkflowSelect">Select Text Workflow:</label>
-                                <select id="textWorkflowSelect" name="selected_workflow" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                                    <option value="">-- Select a workflow --</option>
-                                </select>
-                                <div id="textWorkflowDescription" style="margin-top:8px;font-size:0.9rem;color:#b0b0b0;"></div>
-                            </div>
-
-                            <!-- 自定义API URL (文本) -->
-                            <div id="textApiUrlSection" style="display:none;">
-                                <div class="form-group">
-                                    <label for="textApiUrl">API URL:</label>
-                                    <input type="text" id="textApiUrl" name="text_api_url" placeholder="http://your-api/handle" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                                </div>
-                                <!-- 添加API Key输入字段 -->
-                                <div class="form-group">
-                                    <label for="textApiKey">API Key (optional):</label>
-                                    <input type="text" id="textApiKey" name="text_api_key" placeholder="Your API Key" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                                </div>
-                            </div>
-
-                            <!-- 自定义提示词部分 -->
-                            <div id="customPromptSection" style="display:none;">
-                                <div class="form-group">
-                                    <label for="customPrompt">Custom Prompt:</label>
-                                    <textarea name="custom_prompt" id="customPrompt" placeholder="Enter a custom prompt for the AI..."></textarea>
-                                </div>
-                            </div>
-
-                            <div class="btn-container">
-                                <button type="button" class="btn" id="btnStartTextWorkflow">Process Text</button>
-                                <div class="loader" id="textProcessLoader" style="display:none;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <input type="hidden" name="input_type" id="inputTypeField" value="audio">
-                </form>
-
-                <!-- 进度条和结果显示部分 -->
-                <div id="workflowProgressBar" style="display:none;margin-top:20px;">
-                    <div style="background:#222;border-radius:8px;overflow:hidden;">
-                        <div id="workflowProgressInner" style="height:18px;width:0%;background:linear-gradient(90deg,#667eea,#764ba2);transition:width 0.3s;"></div>
-                    </div>
-                    <ul id="workflowSteps" style="margin-top:10px;font-size:14px;list-style:none;padding-left:0;"></ul>
                 </div>
-                <div id="workflowResult"></div>
+
+                <input type="hidden" name="input_type" id="inputTypeField" value="audio">
+            </form>
+
+            <!-- 进度条和结果显示部分 -->
+            <div id="workflowProgressBar" style="display:none;margin-top:20px;">
+                <div style="background:#222;border-radius:8px;overflow:hidden;">
+                    <div id="workflowProgressInner"
+                         style="height:18px;width:0%;background:linear-gradient(90deg,#667eea,#764ba2);transition:width 0.3s;"></div>
+                </div>
+                <ul id="workflowSteps" style="margin-top:10px;font-size:14px;list-style:none;padding-left:0;"></ul>
             </div>
+            <div id="workflowResult"></div>
         </div>
     </div>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script>
-        // 按钮禁用/启用函数
-        function disableButton(btn, loadingText = null) {
-            btn.disabled = true;
-            btn.dataset.originalHtml = btn.innerHTML;
-            if (loadingText) {
-                btn.innerHTML = `<span class="loading-spinner"></span> ${loadingText}`;
-            }
-            btn.style.opacity = '0.7';
-            btn.style.cursor = 'not-allowed';
+</div>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+    // 按钮禁用/启用函数
+    function disableButton(btn, loadingText = null) {
+        btn.disabled = true;
+        btn.dataset.originalHtml = btn.innerHTML;
+        if (loadingText) {
+            btn.innerHTML = `<span class="loading-spinner"></span> ${loadingText}`;
         }
+        btn.style.opacity = '0.7';
+        btn.style.cursor = 'not-allowed';
+    }
 
-        function enableButton(btn) {
-            btn.disabled = false;
-            if (btn.dataset.originalHtml) {
-                btn.innerHTML = btn.dataset.originalHtml;
-            }
-            btn.style.opacity = '';
-            btn.style.cursor = '';
+    function enableButton(btn) {
+        btn.disabled = false;
+        if (btn.dataset.originalHtml) {
+            btn.innerHTML = btn.dataset.originalHtml;
         }
+        btn.style.opacity = '';
+        btn.style.cursor = '';
+    }
 
-        function openTab(evt, tabName) {
-            let i, tabcontent, tablinks;
-            tabcontent = document.getElementsByClassName("tab-content");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].style.display = "none";
-            }
-            tablinks = document.getElementsByClassName("tab-btn-header");
-            for (i = 0; i < tablinks.length; i++) {
-                if (tablinks[i].style.display === "none") {}
-                tablinks[i].className = tablinks[i].className.replace(" active", "");
-            }
-            document.getElementById(tabName).style.display = "block";
-            document.getElementById(tabName).className += " active";
-
-            // 在切换标签页时同步时间选择器
-            if (tabName === "downloadTab") {
-                // 从工作流标签页复制时间到下载标签页
-                const workflowStartTime = document.querySelector('#workflowTab input[name="start_time"]').value;
-                const workflowEndTime = document.querySelector('#workflowTab input[name="end_time"]').value;
-                document.querySelector('#downloadTab input[name="start_time"]').value = workflowStartTime;
-                document.querySelector('#downloadTab input[name="end_time"]').value = workflowEndTime;
-            } else if (tabName === "workflowTab") {
-                // 从下载标签页复制时间到工作流标签页
-                const downloadStartTime = document.querySelector('#downloadTab input[name="start_time"]').value;
-                const downloadEndTime = document.querySelector('#downloadTab input[name="end_time"]').value;
-                document.querySelector('#workflowTab input[name="start_time"]').value = downloadStartTime;
-                document.querySelector('#workflowTab input[name="end_time"]').value = downloadEndTime;
-            }
+    function openTab(evt, tabName) {
+        let i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
         }
+        tablinks = document.getElementsByClassName("tab-btn-header");
+        for (i = 0; i < tablinks.length; i++) {
+            if (tablinks[i].style.display === "none") {
+            }
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(tabName).style.display = "block";
+        document.getElementById(tabName).className += " active";
 
-        // 设置处理类型切换按钮的事件处理程序
-        document.addEventListener('DOMContentLoaded', function() {
-            // 处理类型切换
-            document.getElementById('processAudio').addEventListener('click', function(e) {
-                e.preventDefault();
-                document.getElementById('processAudio').classList.add('active');
-                document.getElementById('processText').classList.remove('active');
-                document.getElementById('audioProcessSection').style.display = '';
-                document.getElementById('textProcessSection').style.display = 'none';
-                document.getElementById('inputTypeField').value = 'audio';
-            });
+        // 在切换标签页时同步时间选择器
+        if (tabName === "downloadTab") {
+            // 从工作流标签页复制时间到下载标签页
+            const workflowStartTime = document.querySelector('#workflowTab input[name="start_time"]').value;
+            const workflowEndTime = document.querySelector('#workflowTab input[name="end_time"]').value;
+            document.querySelector('#downloadTab input[name="start_time"]').value = workflowStartTime;
+            document.querySelector('#downloadTab input[name="end_time"]').value = workflowEndTime;
+        } else if (tabName === "workflowTab") {
+            // 从下载标签页复制时间到工作流标签页
+            const downloadStartTime = document.querySelector('#downloadTab input[name="start_time"]').value;
+            const downloadEndTime = document.querySelector('#downloadTab input[name="end_time"]').value;
+            document.querySelector('#workflowTab input[name="start_time"]').value = downloadStartTime;
+            document.querySelector('#workflowTab input[name="end_time"]').value = downloadEndTime;
+        }
+    }
 
-            document.getElementById('processText').addEventListener('click', function(e) {
-                e.preventDefault();
-                document.getElementById('processText').classList.add('active');
-                document.getElementById('processAudio').classList.remove('active');
-                document.getElementById('audioProcessSection').style.display = 'none';
-                document.getElementById('textProcessSection').style.display = '';
-                document.getElementById('inputTypeField').value = 'text';
-            });
-
-            // 加载工作流列表
-            fetch('/get_workflows')
-                .then(response => response.json())
-                .then(data => {
-                    const workflows = data.workflows || [];
-                    const audioWorkflowSelect = document.getElementById('audioWorkflowSelect');
-                    const textWorkflowSelect = document.getElementById('textWorkflowSelect');
-
-                    // 清空现有选项
-                    audioWorkflowSelect.innerHTML = '<option value="">-- Select a workflow --</option>';
-                    textWorkflowSelect.innerHTML = '<option value="">-- Select a workflow --</option>';
-
-                    // 分类添加工作流选项
-                    workflows.forEach(workflow => {
-                        const option = document.createElement('option');
-                        option.value = workflow.name;
-                        option.textContent = workflow.name;
-                        option.dataset.description = workflow.description || '';
-                        option.dataset.apiEndpoint = workflow.api_endpoint || '';
-                        option.dataset.apiKey = workflow.api_key || '';
-                        option.dataset.inputType = workflow.input_type || 'text';
-                        option.dataset.customPrompt = workflow.custom_prompt || '';
-
-                        // 根据工作流类型添加到不同的选择器
-                        if (workflow.input_type === 'audio') {
-                            audioWorkflowSelect.appendChild(option.cloneNode(true));
-                        } else {
-                            textWorkflowSelect.appendChild(option.cloneNode(true));
-                        }
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading workflows:', error);
-                });
-
-            // 监听音频工作流选择变化
-            document.getElementById('audioWorkflowSelect').addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const description = selectedOption.dataset.description || '';
-                const apiEndpoint = selectedOption.dataset.apiEndpoint || '';
-
-                // 显示工作流描述
-                document.getElementById('audioWorkflowDescription').textContent = description;
-
-                // 处理自定义API输入框
-                const audioApiUrlSection = document.getElementById('audioApiUrlSection');
-                if (selectedOption.value.includes('Custom API')) {
-                    audioApiUrlSection.style.display = '';
-                    document.getElementById('audioApiUrl').value = apiEndpoint;
-                    document.getElementById('audioApiKey').value = ''; // 清空API Key
-                } else {
-                    audioApiUrlSection.style.display = 'none';
-                }
-            });
-
-            // 监听文本工作流选择变化
-            document.getElementById('textWorkflowSelect').addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const description = selectedOption.dataset.description || '';
-                const apiEndpoint = selectedOption.dataset.apiEndpoint || '';
-                const customPrompt = selectedOption.dataset.customPrompt || '';
-
-                // 显示工作流描述
-                document.getElementById('textWorkflowDescription').textContent = description;
-
-                // 处理自定义API输入框和自定义提示词输入框
-                const textApiUrlSection = document.getElementById('textApiUrlSection');
-                const customPromptSection = document.getElementById('customPromptSection');
-
-                if (selectedOption.value.includes('Custom API')) {
-                    textApiUrlSection.style.display = '';
-                    customPromptSection.style.display = 'none';
-                    document.getElementById('textApiUrl').value = apiEndpoint;
-                    document.getElementById('textApiKey').value = ''; // 清空API Key
-                } else if (selectedOption.value.includes('Summary') || selectedOption.value.includes('Chat') || customPrompt) {
-                    textApiUrlSection.style.display = 'none';
-                    customPromptSection.style.display = '';
-                    document.getElementById('customPrompt').value = customPrompt || "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured.";
-                } else {
-                    textApiUrlSection.style.display = 'none';
-                    customPromptSection.style.display = 'none';
-                }
-            });
-
-            // 开始转录按钮事件
-            document.getElementById('btnStartTranscription').addEventListener('click', function() {
-                disableButton(this, 'Transcription...');
-                startTranscription(this);
-            });
-
-            // 音频处理按钮事件
-            document.getElementById('btnStartAudioWorkflow').addEventListener('click', function() {
-                disableButton(this, 'Processing...');
-                startAudioWorkflow(this);
-            });
-
-            // 文本处理按钮事件
-            document.getElementById('btnStartTextWorkflow').addEventListener('click', function() {
-                disableButton(this, 'Processing...');
-                startTextWorkflow(this);
-            });
+    // 设置处理类型切换按钮的事件处理程序
+    document.addEventListener('DOMContentLoaded', function () {
+        // 处理类型切换
+        document.getElementById('processAudio').addEventListener('click', function (e) {
+            e.preventDefault();
+            document.getElementById('processAudio').classList.add('active');
+            document.getElementById('processText').classList.remove('active');
+            document.getElementById('audioProcessSection').style.display = '';
+            document.getElementById('textProcessSection').style.display = 'none';
+            document.getElementById('inputTypeField').value = 'audio';
         });
 
-        // 获取当前Whisper API设置，首先从localStorage获取，如果没有再使用服务器设置
-        function getCurrentWhisperSettings() {
-            // 尝试从localStorage获取
-            const localSettings = localStorage.getItem('whisperApiSettings');
-            if (localSettings) {
-                return JSON.parse(localSettings);
-            }
+        document.getElementById('processText').addEventListener('click', function (e) {
+            e.preventDefault();
+            document.getElementById('processText').classList.add('active');
+            document.getElementById('processAudio').classList.remove('active');
+            document.getElementById('audioProcessSection').style.display = 'none';
+            document.getElementById('textProcessSection').style.display = '';
+            document.getElementById('inputTypeField').value = 'text';
+        });
 
-            // 如果没有本地设置，返回null（调用方负责从服务器获取默认值）
-            return null;
-        }
-
-        // 开始转录流程 - 使用新的/transcribe接口
-        function startTranscription(btn) {
-            resetWorkflowUI();
-
-            const form = document.getElementById('workflowForm');
-            const startTime = form.querySelector('input[name="start_time"]').value;
-            const endTime = form.querySelector('input[name="end_time"]').value;
-            const selectedLanguage = form.querySelector('#languageSelect').value;
-            const folderPath = document.getElementById('workflowFolderPath').value;
-
-            if (!startTime || !endTime) {
-                alert('Please select both start and end times.');
-                enableButton(btn);
-                return;
-            }
-
-            document.getElementById('workflowProgressBar').style.display = '';
-
-            const formData = new FormData();
-            formData.set('start_time', toUTCString(startTime));
-            formData.set('end_time', toUTCString(endTime));
-            formData.set('language', selectedLanguage);
-
-            // 添加文件夹路径
-            if (folderPath) {
-                formData.set('folder_path', folderPath);
-            }
-
-            // 添加Whisper API设置
-            const whisperSettings = getCurrentWhisperSettings();
-            if (whisperSettings) {
-                formData.set('whisper_api_url', whisperSettings.url);
-                formData.set('whisper_api_key', whisperSettings.api_key);
-                formData.set('whisper_api_model', whisperSettings.model);
-            }
-
-            const socket = io();
-            let steps = [];
-            let currentStep = 0;
-
-            fetch('/transcribe', {
-                method: 'POST',
-                body: formData
-            })
+        // 加载工作流列表
+        fetch('/get_workflows')
             .then(response => response.json())
             .then(data => {
-                if(!data || !data.task_id) {
-                    if(data && data.message) {
+                const workflows = data.workflows || [];
+                const audioWorkflowSelect = document.getElementById('audioWorkflowSelect');
+                const textWorkflowSelect = document.getElementById('textWorkflowSelect');
+
+                // 清空现有选项
+                audioWorkflowSelect.innerHTML = '<option value="">-- Select a workflow --</option>';
+                textWorkflowSelect.innerHTML = '<option value="">-- Select a workflow --</option>';
+
+                // 分类添加工作流选项
+                workflows.forEach(workflow => {
+                    const option = document.createElement('option');
+                    option.value = workflow.name;
+                    option.textContent = workflow.name;
+                    option.dataset.description = workflow.description || '';
+                    option.dataset.apiEndpoint = workflow.api_endpoint || '';
+                    option.dataset.apiKey = workflow.api_key || '';
+                    option.dataset.inputType = workflow.input_type || 'text';
+                    option.dataset.customPrompt = workflow.custom_prompt || '';
+
+                    // 根据工作流类型添加到不同的选择器
+                    if (workflow.input_type === 'audio') {
+                        audioWorkflowSelect.appendChild(option.cloneNode(true));
+                    } else {
+                        textWorkflowSelect.appendChild(option.cloneNode(true));
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error loading workflows:', error);
+            });
+
+        // 监听音频工作流选择变化
+        document.getElementById('audioWorkflowSelect').addEventListener('change', function () {
+            const selectedOption = this.options[this.selectedIndex];
+            const description = selectedOption.dataset.description || '';
+            const apiEndpoint = selectedOption.dataset.apiEndpoint || '';
+
+            // 显示工作流描述
+            document.getElementById('audioWorkflowDescription').textContent = description;
+
+            // 处理自定义API输入框
+            const audioApiUrlSection = document.getElementById('audioApiUrlSection');
+            if (selectedOption.value.includes('Custom API')) {
+                audioApiUrlSection.style.display = '';
+                document.getElementById('audioApiUrl').value = apiEndpoint;
+                document.getElementById('audioApiKey').value = ''; // 清空API Key
+            } else {
+                audioApiUrlSection.style.display = 'none';
+            }
+        });
+
+        // 监听文本工作流选择变化
+        document.getElementById('textWorkflowSelect').addEventListener('change', function () {
+            const selectedOption = this.options[this.selectedIndex];
+            const description = selectedOption.dataset.description || '';
+            const apiEndpoint = selectedOption.dataset.apiEndpoint || '';
+            const customPrompt = selectedOption.dataset.customPrompt || '';
+
+            // 显示工作流描述
+            document.getElementById('textWorkflowDescription').textContent = description;
+
+            // 处理自定义API输入框和自定义提示词输入框
+            const textApiUrlSection = document.getElementById('textApiUrlSection');
+            const customPromptSection = document.getElementById('customPromptSection');
+
+            if (selectedOption.value.includes('Custom API')) {
+                textApiUrlSection.style.display = '';
+                customPromptSection.style.display = 'none';
+                document.getElementById('textApiUrl').value = apiEndpoint;
+                document.getElementById('textApiKey').value = ''; // 清空API Key
+            } else if (selectedOption.value.includes('Summary') || selectedOption.value.includes('Chat') || customPrompt) {
+                textApiUrlSection.style.display = 'none';
+                customPromptSection.style.display = '';
+                document.getElementById('customPrompt').value = customPrompt || "You are a professional meeting assistant. Please summarize the following meeting transcript. Your summary should be clear, concise, and well-structured.";
+            } else {
+                textApiUrlSection.style.display = 'none';
+                customPromptSection.style.display = 'none';
+            }
+        });
+
+        // 开始转录按钮事件
+        document.getElementById('btnStartTranscription').addEventListener('click', function () {
+            disableButton(this, 'Transcription...');
+            startTranscription(this);
+        });
+
+        // 音频处理按钮事件
+        document.getElementById('btnStartAudioWorkflow').addEventListener('click', function () {
+            disableButton(this, 'Processing...');
+            startAudioWorkflow(this);
+        });
+
+        // 文本处理按钮事件
+        document.getElementById('btnStartTextWorkflow').addEventListener('click', function () {
+            disableButton(this, 'Processing...');
+            startTextWorkflow(this);
+        });
+    });
+
+    // 开始转录流程 - 使用新的/transcribe接口
+    function startTranscription(btn) {
+        resetWorkflowUI();
+
+        const form = document.getElementById('workflowForm');
+        const startTime = form.querySelector('input[name="start_time"]').value;
+        const endTime = form.querySelector('input[name="end_time"]').value;
+        const selectedLanguage = form.querySelector('#languageSelect').value;
+        const folderPath = document.getElementById('workflowFolderPath').value;
+
+        if (!startTime || !endTime) {
+            alert('Please select both start and end times.');
+            enableButton(btn);
+            return;
+        }
+
+        document.getElementById('workflowProgressBar').style.display = '';
+
+        const formData = new FormData();
+        formData.set('start_time', toUTCString(startTime));
+        formData.set('end_time', toUTCString(endTime));
+        formData.set('language', selectedLanguage);
+
+        // 添加文件夹路径
+        if (folderPath) {
+            formData.set('folder_path', folderPath);
+        }
+
+        const socket = io();
+        let steps = [];
+        let currentStep = 0;
+
+        fetch('/transcribe', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (!data || !data.task_id) {
+                    if (data && data.message) {
                         alert("Failed to start transcription: " + data.message);
                     } else {
                         alert("Failed to start transcription: Unknown error");
@@ -907,7 +903,7 @@
                 }
                 const taskId = data.task_id;
 
-                socket.on('workflow_progress', function(msg) {
+                socket.on('workflow_progress', function (msg) {
                     if (!msg || msg.task_id !== taskId) return;
 
                     steps.push(msg.message);
@@ -931,69 +927,61 @@
                 document.getElementById('workflowProgressBar').style.display = 'none';
                 enableButton(btn);
             });
+    }
+
+    // 开始音频处理工作流 - 使用新的/process_workflow接口
+    function startAudioWorkflow(btn) {
+        resetWorkflowUI();
+
+        const form = document.getElementById('workflowForm');
+        const startTime = form.querySelector('input[name="start_time"]').value;
+        const endTime = form.querySelector('input[name="end_time"]').value;
+        const selectedWorkflow = document.getElementById('audioWorkflowSelect').value;
+        const folderPath = document.getElementById('workflowFolderPath').value;
+
+        if (!startTime || !endTime) {
+            alert('Please select both start and end times.');
+            enableButton(btn);
+            return;
         }
 
-        // 开始音频处理工作流 - 使用新的/process_workflow接口
-        function startAudioWorkflow(btn) {
-            resetWorkflowUI();
+        if (!selectedWorkflow) {
+            alert('Please select a workflow.');
+            enableButton(btn);
+            return;
+        }
 
-            const form = document.getElementById('workflowForm');
-            const startTime = form.querySelector('input[name="start_time"]').value;
-            const endTime = form.querySelector('input[name="end_time"]').value;
-            const selectedWorkflow = document.getElementById('audioWorkflowSelect').value;
-            const folderPath = document.getElementById('workflowFolderPath').value;
+        const formData = new FormData();
+        formData.set('start_time', toUTCString(startTime));
+        formData.set('end_time', toUTCString(endTime));
+        formData.set('selected_workflow', selectedWorkflow);
+        formData.set('input_type', 'audio');
 
-            if (!startTime || !endTime) {
-                alert('Please select both start and end times.');
+        // 添加文件夹路径
+        if (folderPath) {
+            formData.set('folder_path', folderPath);
+        }
+
+        if (selectedWorkflow.includes('Custom API')) {
+            const apiUrl = document.getElementById('audioApiUrl').value;
+            const apiKey = document.getElementById('audioApiKey').value;
+
+            if (!apiUrl) {
+                alert('Please enter an API URL for the custom API workflow.');
                 enableButton(btn);
                 return;
             }
-
-            if (!selectedWorkflow) {
-                alert('Please select a workflow.');
-                enableButton(btn);
-                return;
+            formData.set('audio_api_url', apiUrl);
+            if (apiKey) {
+                formData.set('audio_api_key', apiKey);
             }
+        }
 
-            const formData = new FormData();
-            formData.set('start_time', toUTCString(startTime));
-            formData.set('end_time', toUTCString(endTime));
-            formData.set('selected_workflow', selectedWorkflow);
-            formData.set('input_type', 'audio');
-
-            // 添加文件夹路径
-            if (folderPath) {
-                formData.set('folder_path', folderPath);
-            }
-
-            // 添加Whisper API设置
-            const whisperSettings = getCurrentWhisperSettings();
-            if (whisperSettings) {
-                formData.set('whisper_api_url', whisperSettings.url);
-                formData.set('whisper_api_key', whisperSettings.api_key);
-                formData.set('whisper_api_model', whisperSettings.model);
-            }
-
-            if (selectedWorkflow.includes('Custom API')) {
-                const apiUrl = document.getElementById('audioApiUrl').value;
-                const apiKey = document.getElementById('audioApiKey').value;
-
-                if (!apiUrl) {
-                    alert('Please enter an API URL for the custom API workflow.');
-                    enableButton(btn);
-                    return;
-                }
-                formData.set('audio_api_url', apiUrl);
-                if (apiKey) {
-                    formData.set('audio_api_key', apiKey);
-                }
-            }
-
-            // 直接使用同步请求处理工作流
-            fetch('/process_workflow', {
-                method: 'POST',
-                body: formData
-            })
+        // 直接使用同步请求处理工作流
+        fetch('/process_workflow', {
+            method: 'POST',
+            body: formData
+        })
             .then(response => response.json())
             .then(data => {
                 document.getElementById('workflowResult').style.display = 'block';
@@ -1006,82 +994,74 @@
                 document.getElementById('workflowResult').style.display = 'block';
                 enableButton(btn);
             });
+    }
+
+    // 开始文本处理工作流 - 使用新的/process_workflow接口
+    function startTextWorkflow(btn) {
+        resetWorkflowUI();
+
+        const form = document.getElementById('workflowForm');
+        const startTime = form.querySelector('input[name="start_time"]').value;
+        const endTime = form.querySelector('input[name="end_time"]').value;
+        const selectedWorkflow = document.getElementById('textWorkflowSelect').value;
+        const transcript = document.getElementById('transcribeTextarea').value;
+        const folderPath = document.getElementById('workflowFolderPath').value;
+
+        if (!startTime || !endTime) {
+            alert('Please select both start and end times.');
+            enableButton(btn);
+            return;
         }
 
-        // 开始文本处理工作流 - 使用新的/process_workflow接口
-        function startTextWorkflow(btn) {
-            resetWorkflowUI();
+        if (!selectedWorkflow) {
+            alert('Please select a workflow.');
+            enableButton(btn);
+            return;
+        }
 
-            const form = document.getElementById('workflowForm');
-            const startTime = form.querySelector('input[name="start_time"]').value;
-            const endTime = form.querySelector('input[name="end_time"]').value;
-            const selectedWorkflow = document.getElementById('textWorkflowSelect').value;
-            const transcript = document.getElementById('transcribeTextarea').value;
-            const folderPath = document.getElementById('workflowFolderPath').value;
+        if (!transcript) {
+            alert('Transcript is empty. Please run transcription first.');
+            enableButton(btn);
+            return;
+        }
 
-            if (!startTime || !endTime) {
-                alert('Please select both start and end times.');
+        const formData = new FormData();
+        formData.set('start_time', toUTCString(startTime));
+        formData.set('end_time', toUTCString(endTime));
+        formData.set('selected_workflow', selectedWorkflow);
+        formData.set('transcript', transcript);
+        formData.set('input_type', 'text');
+
+        // 添加文件夹路径
+        if (folderPath) {
+            formData.set('folder_path', folderPath);
+        }
+
+        if (selectedWorkflow.includes('Custom API')) {
+            const apiUrl = document.getElementById('textApiUrl').value;
+            const apiKey = document.getElementById('textApiKey').value;
+
+            if (!apiUrl) {
+                alert('Please enter an API URL for the custom API workflow.');
                 enableButton(btn);
                 return;
             }
-
-            if (!selectedWorkflow) {
-                alert('Please select a workflow.');
-                enableButton(btn);
-                return;
+            formData.set('text_api_url', apiUrl);
+            if (apiKey) {
+                formData.set('text_api_key', apiKey);
             }
-
-            if (!transcript) {
-                alert('Transcript is empty. Please run transcription first.');
-                enableButton(btn);
-                return;
+        } else if (document.getElementById('customPromptSection').style.display !== 'none') {
+            const customPrompt = document.getElementById('customPrompt').value;
+            if (customPrompt) {
+                formData.set('custom_prompt', customPrompt);
             }
+        }
 
-            const formData = new FormData();
-            formData.set('start_time', toUTCString(startTime));
-            formData.set('end_time', toUTCString(endTime));
-            formData.set('selected_workflow', selectedWorkflow);
-            formData.set('transcript', transcript);
-            formData.set('input_type', 'text');
-
-            // 添加文件夹路径
-            if (folderPath) {
-                formData.set('folder_path', folderPath);
-            }
-
-            // 添加Whisper API设置
-            const whisperSettings = getCurrentWhisperSettings();
-            if (whisperSettings) {
-                formData.set('whisper_api_url', whisperSettings.url);
-                formData.set('whisper_api_key', whisperSettings.api_key);
-                formData.set('whisper_api_model', whisperSettings.model);
-            }
-
-            if (selectedWorkflow.includes('Custom API')) {
-                const apiUrl = document.getElementById('textApiUrl').value;
-                const apiKey = document.getElementById('textApiKey').value;
-
-                if (!apiUrl) {
-                    alert('Please enter an API URL for the custom API workflow.');
-                    enableButton(btn);
-                    return;
-                }
-                formData.set('text_api_url', apiUrl);
-                if (apiKey) {
-                    formData.set('text_api_key', apiKey);
-                }
-            } else if (document.getElementById('customPromptSection').style.display !== 'none') {
-                const customPrompt = document.getElementById('customPrompt').value;
-                if (customPrompt) {
-                    formData.set('custom_prompt', customPrompt);
-                }
-            }
-
-            // 直接使用同步请求处理工作流
-            fetch('/process_workflow', {
-                method: 'POST',
-                body: formData
-            })
+        // 直接使用同步请求处理工作流
+        fetch('/process_workflow', {
+            method: 'POST',
+            body: formData
+        })
             .then(response => response.json())
             .then(data => {
                 document.getElementById('workflowResult').style.display = 'block';
@@ -1094,270 +1074,277 @@
                 document.getElementById('workflowResult').style.display = 'block';
                 enableButton(btn);
             });
-        }
+    }
 
-        // 更新进度条
-        function updateProgressBar(steps, currentStep) {
-            let totalSteps = Math.max(5, currentStep + 2);
-            let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
-            document.getElementById('workflowProgressInner').style.width = percent + '%';
+    // 更新进度条
+    function updateProgressBar(steps, currentStep) {
+        let totalSteps = Math.max(5, currentStep + 2);
+        let percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
+        document.getElementById('workflowProgressInner').style.width = percent + '%';
 
-            const ul = document.getElementById('workflowSteps');
-            ul.innerHTML = '';
-            steps.forEach((step) => {
-                ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
-            });
-        }
+        const ul = document.getElementById('workflowSteps');
+        ul.innerHTML = '';
+        steps.forEach((step) => {
+            ul.innerHTML += `<li style="margin-bottom:4px;">${step}</li>`;
+        });
+    }
 
-        // 重置工作流UI
-        function resetWorkflowUI() {
-            document.getElementById('workflowResult').style.display = 'none';
-            document.getElementById('workflowResult').innerHTML = '';
-            document.getElementById('workflowProgressBar').style.display = 'none';
-            document.getElementById('workflowProgressInner').style.width = '0%';
-            document.getElementById('workflowSteps').innerHTML = '';
-        }
+    // 重置工作流UI
+    function resetWorkflowUI() {
+        document.getElementById('workflowResult').style.display = 'none';
+        document.getElementById('workflowResult').innerHTML = '';
+        document.getElementById('workflowProgressBar').style.display = 'none';
+        document.getElementById('workflowProgressInner').style.width = '0%';
+        document.getElementById('workflowSteps').innerHTML = '';
+    }
 
-        // 渲染工作流结果
-        function renderWorkflowResult(result) {
-            const container = document.getElementById('workflowResult');
-            container.innerHTML = '';
-            if (!result) return;
+    // 渲染工作流结果
+    function renderWorkflowResult(result) {
+        const container = document.getElementById('workflowResult');
+        container.innerHTML = '';
+        if (!result) return;
 
-            if (typeof result === 'string') {
-                // 链接
-                if (/^https?:\/\/.+/.test(result)) {
-                    if (/\.(mp3|wav|ogg)$/i.test(result)) {
-                        container.innerHTML = `<audio controls src="${result}" style="width:100%"></audio>`;
-                    } else if (/\.(mp4|webm|mov)$/i.test(result)) {
-                        container.innerHTML = `<video controls src="${result}" style="width:100%"></video>`;
-                    } else {
-                        container.innerHTML = `<a href="${result}" target="_blank">${result}</a>`;
-                    }
+        if (typeof result === 'string') {
+            // 链接
+            if (/^https?:\/\/.+/.test(result)) {
+                if (/\.(mp3|wav|ogg)$/i.test(result)) {
+                    container.innerHTML = `<audio controls src="${result}" style="width:100%"></audio>`;
+                } else if (/\.(mp4|webm|mov)$/i.test(result)) {
+                    container.innerHTML = `<video controls src="${result}" style="width:100%"></video>`;
                 } else {
-                    container.innerText = result;
-                }
-            } else if (result && result.type && result.url) {
-                // 后端返回结构化类型
-                if (result.type === 'audio') {
-                    container.innerHTML = `<audio controls src="${result.url}" style="width:100%"></audio>`;
-                } else if (result.type === 'video') {
-                    container.innerHTML = `<video controls src="${result.url}" style="width:100%"></video>`;
-                } else if (result.type === 'link') {
-                    container.innerHTML = `<a href="${result.url}" target="_blank">${result.url}</a>`;
-                } else {
-                    container.innerText = result.content || JSON.stringify(result);
+                    container.innerHTML = `<a href="${result}" target="_blank">${result}</a>`;
                 }
             } else {
-                container.innerText = typeof result === 'object' ? JSON.stringify(result) : result;
+                container.innerText = result;
             }
+        } else if (result && result.type && result.url) {
+            // 后端返回结构化类型
+            if (result.type === 'audio') {
+                container.innerHTML = `<audio controls src="${result.url}" style="width:100%"></audio>`;
+            } else if (result.type === 'video') {
+                container.innerHTML = `<video controls src="${result.url}" style="width:100%"></video>`;
+            } else if (result.type === 'link') {
+                container.innerHTML = `<a href="${result.url}" target="_blank">${result.url}</a>`;
+            } else {
+                container.innerText = result.content || JSON.stringify(result);
+            }
+        } else {
+            container.innerText = typeof result === 'object' ? JSON.stringify(result) : result;
         }
+    }
 
-        // 格式化时间
-        function toUTCString(localStr) {
-            const date = new Date(localStr);
-            return date.getUTCFullYear() + '-' +
-                String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
-                String(date.getUTCDate()).padStart(2, '0') + 'T' +
-                String(date.getUTCHours()).padStart(2, '0') + ':' +
-                String(date.getUTCMinutes()).padStart(2, '0') + ':' +
-                String(date.getUTCSeconds()).padStart(2, '0');
-        }
+    // 格式化时间
+    function toUTCString(localStr) {
+        const date = new Date(localStr);
+        return date.getUTCFullYear() + '-' +
+            String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
+            String(date.getUTCDate()).padStart(2, '0') + 'T' +
+            String(date.getUTCHours()).padStart(2, '0') + ':' +
+            String(date.getUTCMinutes()).padStart(2, '0') + ':' +
+            String(date.getUTCSeconds()).padStart(2, '0');
+    }
 
-        function toLocalISOString(date) {
-            const pad = n => String(n).padStart(2, '0');
-            const year = date.getFullYear();
-            const month = pad(date.getMonth() + 1);
-            const day = pad(date.getDate());
-            const hours = pad(date.getHours());
-            const minutes = pad(date.getMinutes());
-            const seconds = pad(date.getSeconds());
+    function toLocalISOString(date) {
+        const pad = n => String(n).padStart(2, '0');
+        const year = date.getFullYear();
+        const month = pad(date.getMonth() + 1);
+        const day = pad(date.getDate());
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+        const seconds = pad(date.getSeconds());
 
-            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-        }
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    }
 
-        // 新增：文件夹搜索与选择功能
-        function setupFolderSearch() {
-            const searchInput = document.getElementById('folderSearchInput');
-            const folderDropdown = document.getElementById('folderDropdown');
-            const selectedFolderInfo = document.getElementById('selectedFolderInfo');
+    // 新增：文件夹搜索与选择功能
+    function setupFolderSearch() {
+        const searchInput = document.getElementById('folderSearchInput');
+        const folderDropdown = document.getElementById('folderDropdown');
+        const selectedFolderInfo = document.getElementById('selectedFolderInfo');
 
-            // 点击输入框显示下拉框
-            searchInput.addEventListener('click', () => {
+        // 点击输入框显示下拉框
+        searchInput.addEventListener('click', () => {
+            folderDropdown.classList.add('show');
+        });
+
+        // 输入时过滤下拉框选项
+        searchInput.addEventListener('input', () => {
+            const filter = searchInput.value.toLowerCase();
+            const items = folderDropdown.getElementsByClassName('dropdown-item');
+
+            let hasVisibleItems = false;
+
+            for (let i = 0; i < items.length; i++) {
+                const text = items[i].textContent.toLowerCase();
+                if (text.includes(filter)) {
+                    items[i].style.display = '';
+                    hasVisibleItems = true;
+                } else {
+                    items[i].style.display = 'none';
+                }
+            }
+
+            if (!folderDropdown.classList.contains('show')) {
                 folderDropdown.classList.add('show');
-            });
+            }
+        });
 
-            // 输入时过滤下拉框选项
-            searchInput.addEventListener('input', () => {
-                const filter = searchInput.value.toLowerCase();
-                const items = folderDropdown.getElementsByClassName('dropdown-item');
+        // 点击其他地方时隐藏下拉框
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !folderDropdown.contains(e.target)) {
+                folderDropdown.classList.remove('show');
+            }
+        });
+    }
 
-                let hasVisibleItems = false;
+    // 修改：加载文件夹列表到下拉框
+    function loadFolderList() {
+        fetch('/get_folders')
+            .then(response => response.json())
+            .then(data => {
+                const folderDropdown = document.getElementById('folderDropdown');
+                // 保留"All Folders"选项，清除其他选项
+                const allFoldersOption = folderDropdown.querySelector('.dropdown-item');
+                folderDropdown.innerHTML = '';
+                folderDropdown.appendChild(allFoldersOption);
 
-                for (let i = 0; i < items.length; i++) {
-                    const text = items[i].textContent.toLowerCase();
-                    if (text.includes(filter)) {
-                        items[i].style.display = '';
-                        hasVisibleItems = true;
-                    } else {
-                        items[i].style.display = 'none';
-                    }
+                if (!data.folders || data.folders.length === 0) {
+                    const noFolders = document.createElement('div');
+                    noFolders.className = 'dropdown-item';
+                    noFolders.textContent = 'No recording folders found';
+                    folderDropdown.appendChild(noFolders);
+                    return;
                 }
 
-                if (!folderDropdown.classList.contains('show')) {
-                    folderDropdown.classList.add('show');
-                }
-            });
+                data.folders.forEach(folder => {
+                    const folderItem = document.createElement('div');
+                    folderItem.className = 'dropdown-item';
 
-            // 点击其他地方时隐藏下拉框
-            document.addEventListener('click', (e) => {
-                if (!searchInput.contains(e.target) && !folderDropdown.contains(e.target)) {
-                    folderDropdown.classList.remove('show');
-                }
-            });
-        }
+                    // 转换UTC时间为本地时间
+                    const startDate = new Date(folder.start_time);
+                    const endDate = new Date(folder.end_time);
+                    const localStartTime = startDate.toLocaleString();
+                    const localEndTime = endDate.toLocaleString();
 
-        // 修改：加载文件夹列表到下拉框
-        function loadFolderList() {
-            fetch('/get_folders')
-                .then(response => response.json())
-                .then(data => {
-                    const folderDropdown = document.getElementById('folderDropdown');
-                    // 保留"All Folders"选项，清除其他选项
-                    const allFoldersOption = folderDropdown.querySelector('.dropdown-item');
-                    folderDropdown.innerHTML = '';
-                    folderDropdown.appendChild(allFoldersOption);
+                    folderItem.textContent = folder.folder_name + ' (' + localStartTime + ' - ' + localEndTime + ')';
+                    folderItem.dataset.folderPath = folder.folder_path;
+                    folderItem.dataset.startTime = folder.start_time;
+                    folderItem.dataset.endTime = folder.end_time;
+                    folderItem.dataset.fileCount = folder.file_count;
+                    folderItem.dataset.durationMinutes = folder.duration_minutes;
 
-                    if (!data.folders || data.folders.length === 0) {
-                        const noFolders = document.createElement('div');
-                        noFolders.className = 'dropdown-item';
-                        noFolders.textContent = 'No recording folders found';
-                        folderDropdown.appendChild(noFolders);
-                        return;
-                    }
-
-                    data.folders.forEach(folder => {
-                        const folderItem = document.createElement('div');
-                        folderItem.className = 'dropdown-item';
-                        folderItem.textContent = folder.folder_name + ' (' + folder.start_time.replace("T"," ").split(".")[0] + ' - ' + folder.end_time.replace("T"," ").split(".")[0] + ')';
-                        folderItem.dataset.folderPath = folder.folder_path;
-                        folderItem.dataset.startTime = folder.start_time;
-                        folderItem.dataset.endTime = folder.end_time;
-                        folderItem.dataset.fileCount = folder.file_count;
-                        folderItem.dataset.durationMinutes = folder.duration_minutes;
-
-                        // 添加点击事件
-                        folderItem.addEventListener('click', () => {
-                            selectFolder(folderItem);
-                        });
-
-                        folderDropdown.appendChild(folderItem);
+                    // 添加点击事件
+                    folderItem.addEventListener('click', () => {
+                        selectFolder(folderItem);
                     });
 
-                    // 默认选择"All Folders"
-                    selectFolder(allFoldersOption);
-                    allFoldersOption.addEventListener('click', () => {
-                        selectFolder(allFoldersOption);
-                    })
-                })
-                .catch(error => {
-                    console.error('Error loading folders:', error);
-                    const folderDropdown = document.getElementById('folderDropdown');
-                    folderDropdown.innerHTML = '<div class="dropdown-item">Error loading folders</div>';
+                    folderDropdown.appendChild(folderItem);
                 });
-        }
 
-        // 选择文件夹
-        function selectFolder(folderItem) {
-            const searchInput = document.getElementById('folderSearchInput');
-            const folderDropdown = document.getElementById('folderDropdown');
-            const selectedFolderInfo = document.getElementById('selectedFolderInfo');
+                // 默认选择"All Folders"
+                selectFolder(allFoldersOption);
+                allFoldersOption.addEventListener('click', () => {
+                    selectFolder(allFoldersOption);
+                })
+            })
+            .catch(error => {
+                console.error('Error loading folders:', error);
+                const folderDropdown = document.getElementById('folderDropdown');
+                folderDropdown.innerHTML = '<div class="dropdown-item">Error loading folders</div>';
+            });
+    }
 
-            // 设置输入框的值
-            searchInput.value = folderItem.textContent;
+    // 选择文件夹
+    function selectFolder(folderItem) {
+        const searchInput = document.getElementById('folderSearchInput');
+        const folderDropdown = document.getElementById('folderDropdown');
+        const selectedFolderInfo = document.getElementById('selectedFolderInfo');
 
-            // 隐藏下拉框
-            folderDropdown.classList.remove('show');
+        // 设置输入框的值
+        searchInput.value = folderItem.textContent;
 
-            // 设置隐藏的文件夹路径输入
-            document.getElementById('downloadFolderPath').value = folderItem.dataset.folderPath || '';
-            document.getElementById('workflowFolderPath').value = folderItem.dataset.folderPath || '';
+        // 隐藏下拉框
+        folderDropdown.classList.remove('show');
 
-            // 显示所选文件夹信息
-            if (folderItem.textContent === 'All Folders') {
-                selectedFolderInfo.style.display = 'none';
-                // 对于"All Folders"，不自动设置时间范围
-            } else {
-                // 显示文件夹信息
-                selectedFolderInfo.innerHTML = `
+        // 设置隐藏的文件夹路径输入
+        document.getElementById('downloadFolderPath').value = folderItem.dataset.folderPath || '';
+        document.getElementById('workflowFolderPath').value = folderItem.dataset.folderPath || '';
+
+        // 显示所选文件夹信息
+        if (folderItem.textContent === 'All Folders') {
+            selectedFolderInfo.style.display = 'none';
+            // 对于"All Folders"，不自动设置时间范围
+        } else {
+            // 显示文件夹信息
+            selectedFolderInfo.innerHTML = `
                     <strong>${folderItem.dataset.folderPath}</strong>:
                     ${folderItem.dataset.fileCount} files,
                     ${folderItem.dataset.durationMinutes} minutes
                 `;
-                selectedFolderInfo.style.display = '';
+            selectedFolderInfo.style.display = '';
 
-                // 设置时间范围
-                if (folderItem.dataset.startTime && folderItem.dataset.endTime) {
-                    setTimeRangeFromFolder({
-                        start_time: folderItem.dataset.startTime,
-                        end_time: folderItem.dataset.endTime
-                    });
-                }
+            // 设置时间范围
+            if (folderItem.dataset.startTime && folderItem.dataset.endTime) {
+                setTimeRangeFromFolder({
+                    start_time: folderItem.dataset.startTime,
+                    end_time: folderItem.dataset.endTime
+                });
             }
         }
+    }
 
-        // 设置时间范围从选定的文件夹
-        function setTimeRangeFromFolder(folder) {
-            const startDate = new Date(folder.start_time);
-            const endDate = new Date(folder.end_time);
+    // 设置时间范围从选定的文件夹
+    function setTimeRangeFromFolder(folder) {
+        const startDate = new Date(folder.start_time);
+        const endDate = new Date(folder.end_time);
 
-            // 格式化为本地datetime-local格式
-            const startTimeFormatted = toLocalISOString(startDate);
-            const endTimeFormatted = toLocalISOString(endDate);
+        // 格式化为本地datetime-local格式
+        const startTimeFormatted = toLocalISOString(startDate);
+        const endTimeFormatted = toLocalISOString(endDate);
 
-            // 设置所有时间输入框
-            document.querySelectorAll('input[name="start_time"]').forEach(input => {
-                input.value = startTimeFormatted;
-            });
+        // 设置所有时间输入框
+        document.querySelectorAll('input[name="start_time"]').forEach(input => {
+            input.value = startTimeFormatted;
+        });
 
-            document.querySelectorAll('input[name="end_time"]').forEach(input => {
-                input.value = endTimeFormatted;
-            });
-        }
+        document.querySelectorAll('input[name="end_time"]').forEach(input => {
+            input.value = endTimeFormatted;
+        });
+    }
 
-        // 格式化日期时间显示
-        function formatDateTime(date) {
-            const options = {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            };
-            return date.toLocaleDateString(undefined, options);
-        }
+    // 格式化日期时间显示
+    function formatDateTime(date) {
+        const options = {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        };
+        return date.toLocaleDateString(undefined, options);
+    }
 
-        // 设置默认时间范围
-        window.onload = function() {
-            // 初始化文件夹搜索功能
-            setupFolderSearch();
+    // 设置默认时间范围
+    window.onload = function () {
+        // 初始化文件夹搜索功能
+        setupFolderSearch();
 
-            // 加载文件夹列表
-            loadFolderList();
+        // 加载文件夹列表
+        loadFolderList();
 
-            const now = new Date();
-            const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-            const oneHourLater = new Date(now.getTime());
-            const startTimeInputs = document.querySelectorAll('input[name="start_time"]');
-            const endTimeInputs = document.querySelectorAll('input[name="end_time"]');
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        const oneHourLater = new Date(now.getTime());
+        const startTimeInputs = document.querySelectorAll('input[name="start_time"]');
+        const endTimeInputs = document.querySelectorAll('input[name="end_time"]');
 
-            startTimeInputs.forEach(input => {
-                input.value = toLocalISOString(oneHourAgo);
-            });
+        startTimeInputs.forEach(input => {
+            input.value = toLocalISOString(oneHourAgo);
+        });
 
-            endTimeInputs.forEach(input => {
-                input.value = toLocalISOString(oneHourLater);
-            });
-        }
-    </script>
+        endTimeInputs.forEach(input => {
+            input.value = toLocalISOString(oneHourLater);
+        });
+    }
+</script>
 </body>
 </html>
