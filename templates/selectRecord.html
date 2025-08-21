@@ -44,6 +44,75 @@
             background-clip: text;
         }
 
+        /* 时间切换开关样式 */
+        .time-toggle-container {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 54px;
+            height: 28px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.2);
+            transition: .4s;
+            border-radius: 28px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .time-format {
+            font-weight: 600;
+        }
+
+        .time-format-active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
         /* 设置按钮样式 */
         .settings-btn {
             position: absolute;
@@ -454,6 +523,16 @@
 <body>
 <div class="container">
     <div class="header-container">
+        <!-- 添加时间格式切换开关 -->
+        <div class="time-toggle-container">
+            <span class="time-format time-format-local time-format-active">LOCAL</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="timeFormatToggle">
+                <span class="toggle-slider"></span>
+            </label>
+            <span class="time-format time-format-utc">UTC</span>
+        </div>
+
         <h1>Meeting Audio Processing</h1>
         <div style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; gap: 10px;">
             <button onclick="window.open('/config','_blank')" class="settings-btn" title="Settings">⚙️</button>
@@ -678,6 +757,81 @@
 </div>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
+    // 全局变量，用于跟踪当前时间格式
+    let isUTC = false;
+
+    // 时间格式切换功能
+    document.getElementById('timeFormatToggle').addEventListener('change', function () {
+        isUTC = this.checked;
+        document.querySelector('.time-format-local').classList.toggle('time-format-active', !isUTC);
+        document.querySelector('.time-format-utc').classList.toggle('time-format-active', isUTC);
+
+        // 更新所有时间显示
+        updateAllTimeDisplays();
+    });
+
+    // 更新所有时间显示格式
+    function updateAllTimeDisplays() {
+        console.log(isUTC)
+
+        // 更新日期选择器
+        const startTimeInputs = document.querySelectorAll('input[name="start_time"]');
+        const endTimeInputs = document.querySelectorAll('input[name="end_time"]');
+
+        startTimeInputs.forEach(input => {
+            console.log(input.value)
+            if (input.value) {
+                const dateObj = new Date(input.value + (isUTC ? "" : "Z"));
+                input.value = isUTC ? toUTCISOString(dateObj) : toLocalISOString(dateObj);
+            }
+        });
+
+        endTimeInputs.forEach(input => {
+            if (input.value) {
+                const dateObj = new Date(input.value + (isUTC ? "" : "Z"));
+                input.value = isUTC ? toUTCISOString(dateObj) : toLocalISOString(dateObj);
+            }
+        });
+
+        // 更新文件夹列表显示
+        refreshFolderDisplayTimes();
+    }
+
+    // 刷新文件夹显示时间
+    function refreshFolderDisplayTimes() {
+        const folderItems = document.querySelectorAll('#folderDropdown .dropdown-item');
+        folderItems.forEach(item => {
+            if (item.dataset.utcStartTime && item.dataset.utcEndTime) {
+                const startTime = new Date(item.dataset.utcStartTime);
+                const endTime = new Date(item.dataset.utcEndTime);
+
+                const displayStartTime = isUTC ?
+                    item.dataset.utcStartTime.replace('T', ' ').replace('Z', '').replaceAll('-', '/').split(".")[0] :
+                    new Date(item.dataset.utcStartTime).toLocaleString();
+
+                const displayEndTime = isUTC ?
+                    item.dataset.utcEndTime.replace('T', ' ').replace('Z', '').replaceAll('-', '/').split(".")[0] :
+                    new Date(item.dataset.utcEndTime).toLocaleString();
+
+                // 更新文本显示
+                if (item.textContent !== 'All Folders' && item.textContent !== 'No recording folders found' && item.textContent !== 'Error loading folders') {
+                    const folderName = item.textContent.split('(')[0].trim();
+                    item.textContent = `${folderName} (${displayStartTime} - ${displayEndTime})`;
+                }
+            }
+        });
+
+        // 如果当前有选中的文件夹，更新选中文件夹的信息显示
+        const searchInput = document.getElementById('folderSearchInput');
+        if (searchInput.value && searchInput.value !== 'All Folders') {
+            const selectedItem = Array.from(folderItems).find(item =>
+                item.textContent.split('(')[0].trim() === searchInput.value.split('(')[0].trim());
+            if (selectedItem) {
+                selectFolder(selectedItem, false);
+            }
+        }
+    }
+
     // 按钮禁用/启用函数
     function disableButton(btn, loadingText = null) {
         btn.disabled = true;
@@ -711,6 +865,7 @@
             tablinks[i].className = tablinks[i].className.replace(" active", "");
         }
         document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
         document.getElementById(tabName).className += " active";
 
         // 在切换标签页时同步时间选择器
@@ -1133,7 +1288,7 @@
         }
     }
 
-    // 格式化时间
+    // 格式化时间 - 总是返回UTC格式，用于API请求
     function toUTCString(localStr) {
         const date = new Date(localStr);
         return date.getUTCFullYear() + '-' +
@@ -1144,6 +1299,7 @@
             String(date.getUTCSeconds()).padStart(2, '0');
     }
 
+    // 转换为本地ISO字符串格式
     function toLocalISOString(date) {
         const pad = n => String(n).padStart(2, '0');
         const year = date.getFullYear();
@@ -1152,6 +1308,19 @@
         const hours = pad(date.getHours());
         const minutes = pad(date.getMinutes());
         const seconds = pad(date.getSeconds());
+
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    }
+
+    // 转换为UTC ISO字符串格式
+    function toUTCISOString(date) {
+        const pad = n => String(n).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        const month = pad(date.getUTCMonth() + 1);
+        const day = pad(date.getUTCDate());
+        const hours = pad(date.getUTCHours());
+        const minutes = pad(date.getUTCMinutes());
+        const seconds = pad(date.getUTCSeconds());
 
         return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
     }
@@ -1220,16 +1389,24 @@
                     const folderItem = document.createElement('div');
                     folderItem.className = 'dropdown-item';
 
-                    // 转换UTC时间为本地时间
+                    // 存储原始UTC时间
+                    folderItem.dataset.utcStartTime = folder.start_time;
+                    folderItem.dataset.utcEndTime = folder.end_time;
+
+                    // 根据当前模式显示时间
                     const startDate = new Date(folder.start_time + "Z");
                     const endDate = new Date(folder.end_time + "Z");
-                    const localStartTime = startDate.toLocaleString();
-                    const localEndTime = endDate.toLocaleString();
 
-                    folderItem.textContent = folder.folder_name + ' (' + localStartTime + ' - ' + localEndTime + ')';
+                    const displayStartTime = isUTC ?
+                        folder.start_time.replace('T', ' ') :
+                        startDate.toLocaleString();
+
+                    const displayEndTime = isUTC ?
+                        folder.end_time.replace('T', ' ') :
+                        endDate.toLocaleString();
+
+                    folderItem.textContent = folder.folder_name + ' (' + displayStartTime + ' - ' + displayEndTime + ')';
                     folderItem.dataset.folderPath = folder.folder_path;
-                    folderItem.dataset.startTime = localStartTime;
-                    folderItem.dataset.endTime = localEndTime;
                     folderItem.dataset.fileCount = folder.file_count;
                     folderItem.dataset.durationMinutes = folder.duration_minutes;
 
@@ -1255,7 +1432,7 @@
     }
 
     // 选择文件夹
-    function selectFolder(folderItem) {
+    function selectFolder(folderItem, updateTimeInputs = true) {
         const searchInput = document.getElementById('folderSearchInput');
         const folderDropdown = document.getElementById('folderDropdown');
         const selectedFolderInfo = document.getElementById('selectedFolderInfo');
@@ -1284,10 +1461,10 @@
             selectedFolderInfo.style.display = '';
 
             // 设置时间范围
-            if (folderItem.dataset.startTime && folderItem.dataset.endTime) {
+            if (updateTimeInputs && folderItem.dataset.utcStartTime && folderItem.dataset.utcEndTime) {
                 setTimeRangeFromFolder({
-                    start_time: folderItem.dataset.startTime,
-                    end_time: folderItem.dataset.endTime
+                    utc_start_time: folderItem.dataset.utcStartTime,
+                    utc_end_time: folderItem.dataset.utcEndTime
                 });
             }
         }
@@ -1295,12 +1472,12 @@
 
     // 设置时间范围从选定的文件夹
     function setTimeRangeFromFolder(folder) {
-        const startDate = new Date(folder.start_time);
-        const endDate = new Date(folder.end_time);
+        const startDate = new Date(folder.utc_start_time + "Z");
+        const endDate = new Date(folder.utc_end_time + "Z");
 
-        // 格式化为本地datetime-local格式
-        const startTimeFormatted = toLocalISOString(startDate);
-        const endTimeFormatted = toLocalISOString(endDate);
+        // 根据当前时间模式格式化
+        const startTimeFormatted = isUTC ? toUTCISOString(startDate) : toLocalISOString(startDate);
+        const endTimeFormatted = isUTC ? toUTCISOString(endDate) : toLocalISOString(endDate);
 
         // 设置所有时间输入框
         document.querySelectorAll('input[name="start_time"]').forEach(input => {
@@ -1345,6 +1522,59 @@
             input.value = toLocalISOString(oneHourLater);
         });
     }
+
+
+    // 保留与下载相关的表单处理
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('downloadForm').onsubmit = async function (e) {
+            e.preventDefault();
+
+            // 禁用下载按钮
+            const downloadBtn = this.querySelector('button[type="submit"]');
+            disableButton(downloadBtn, 'Downloading...');
+
+            const form = this;
+            const startInput = form.querySelector('input[name="start_time"]');
+            const endInput = form.querySelector('input[name="end_time"]');
+
+            const formData = new FormData();
+            formData.append('start_time', isUTC ? startInput.value : toUTCString(startInput.value));
+            formData.append('end_time', isUTC ? endInput.value : toUTCString(endInput.value));
+
+            try {
+                const resp = await fetch('/download', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (resp.ok) {
+                    const blob = await resp.blob();
+                    // 尝试从header获取文件名
+                    let filename = 'audio.wav';
+                    const disposition = resp.headers.get('Content-Disposition');
+                    if (disposition && disposition.indexOf('filename=') !== -1) {
+                        filename = decodeURIComponent(disposition.split('filename=')[1].replace(/['"]/g, ''));
+                    }
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    console.log(resp)
+                    const data = await resp.json();
+                    alert('下载失败: ' + (data.message || '未知错误'));
+                }
+            } catch (err) {
+                alert('请求出错: ' + err.message);
+            } finally {
+                enableButton(downloadBtn);
+            }
+        }
+    });
 </script>
 </body>
 </html>

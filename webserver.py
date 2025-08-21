@@ -112,12 +112,14 @@ LANGUAGE_MAPPING = {
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
 
-AUDIO_DIR = r"../../michael/echokit/9090/record"
+AUDIO_DIR = r"./record"
+# AUDIO_DIR = r"../../michael/echokit/9090/record"
 
 
 def parse_timestamp_from_filename(filename):
     try:
-        match = re.search(r'recording_(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2})', filename)
+        match = re.search(r'recording_(\d{4}-\d{2}-\d{2}T\d{2}_\d{2}_\d{2}\.\d+\+\d{2}_\d{2})', filename)
+        # match = re.search(r'recording_(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2})', filename)
         if match:
             time_str = match.group(1)
 
@@ -622,7 +624,7 @@ def transcribe():
                         transcripts = transcript["text"]
                     else:
                         transcripts += "\n" + transcript["text"]
-                        socketio.emit('workflow_progress', {'task_id': task_id, 'step': f'transcribe_{i+1}_done', 'message': f'Group {i+1} transcription completed'})
+                    socketio.emit('workflow_progress', {'task_id': task_id, 'step': f'transcribe_{i+1}_done', 'message': f'Group {i+1} transcription completed'})
                 else:
                     # 处理转录失败的情况 - 添加空的时间段标记
                     audio_duration_ms = len(audio)
