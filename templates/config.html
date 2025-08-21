@@ -461,6 +461,19 @@
             </div>
 
             <div class="form-group">
+                <label for="workflowApiModel">Model (Optional)</label>
+                <div class="search-container">
+                    <input type="text" id="workflowApiModel" name="api_model"
+                           placeholder="Select or type model name" class="search-input">
+                    <span class="dropdown-arrow">▼</span>
+                    <div id="workflowModelDropdown" class="dropdown-list">
+                        <!-- Models will be loaded here -->
+                        <div class="dropdown-item">First fetch models...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
                 <label for="workflowDescription">Description</label>
                 <textarea id="workflowDescription" name="description" rows="3"
                           placeholder="Describe what this workflow does"></textarea>
@@ -476,9 +489,12 @@
 
             <div class="btn-container">
                 <button type="button" class="btn" id="saveWorkflowBtn">Save Workflow</button>
+                <button type="button" class="btn" id="fetchWorkflowModelsBtn"
+                        style="background:linear-gradient(135deg, #3498db 0%, #2980b9 100%);">Fetch Models</button>
                 <button type="button" class="btn" id="cancelWorkflowBtn" style="background: rgba(255,255,255,0.1);">
                     Cancel
                 </button>
+                <div class="loader" id="workflowModelsLoader"></div>
             </div>
         </div>
     </div>
@@ -524,6 +540,12 @@
         const workflowsSuccess = document.getElementById('workflowsSuccess');
         const workflowsError = document.getElementById('workflowsError');
         const workflowEditIndex = document.getElementById('workflowEditIndex');
+        const workflowApiEndpoint = document.getElementById('workflowApiEndpoint');
+        const workflowApiKey = document.getElementById('workflowApiKey');
+        const workflowApiModel = document.getElementById('workflowApiModel');
+        const workflowModelDropdown = document.getElementById('workflowModelDropdown');
+        const fetchWorkflowModelsBtn = document.getElementById('fetchWorkflowModelsBtn');
+        const workflowModelsLoader = document.getElementById('workflowModelsLoader');
 
         // 初始加载工作流
         loadWorkflows();
@@ -541,6 +563,14 @@
         // 取消编辑工作流
         cancelWorkflowBtn.addEventListener('click', function () {
             hideWorkflowForm();
+        });
+
+        // 设置工作流模型下拉框交互
+        setupWorkflowModelDropdown();
+
+        // 获取工作流模型列表
+        fetchWorkflowModelsBtn.addEventListener('click', function () {
+            fetchWorkflowModels();
         });
 
         // 函数定义
@@ -793,6 +823,7 @@
                         <div class="workflow-details">
                             <div class="workflow-detail">Type: <span>${workflow.input_type || 'text'}</span></div>
                             <div class="workflow-detail">API Endpoint: <span>${escapeHtml(workflow.api_endpoint || 'Not set')}</span></div>
+                            <div class="workflow-detail">Model: <span>${escapeHtml(workflow.api_model || 'Not set')}</span></div>
                             <div class="workflow-detail">Description: <span>${escapeHtml(workflow.description || 'No description')}</span></div>
                         </div>
                     `;
@@ -813,11 +844,17 @@
             document.getElementById('workflowInputType').value = workflow ? (workflow.input_type || 'text') : 'text';
             document.getElementById('workflowApiEndpoint').value = workflow ? (workflow.api_endpoint || '') : '';
             document.getElementById('workflowApiKey').value = workflow ? (workflow.api_key || '') : '';
+            document.getElementById('workflowApiModel').value = workflow ? (workflow.api_model || '') : '';
             document.getElementById('workflowDescription').value = workflow ? (workflow.description || '') : '';
             document.getElementById('workflowCustomPrompt').value = workflow ? (workflow.custom_prompt || '') : '';
 
             // 设置编辑索引
             document.getElementById('workflowEditIndex').value = workflow ? workflow.index : -1;
+
+            // 如果有API端点和密钥，自动尝试获取模型列表
+            if (workflow && workflow.api_endpoint && workflow.api_key) {
+                fetchWorkflowModels(false); // 静默获取
+            }
         }
 
         function hideWorkflowForm() {
@@ -835,6 +872,7 @@
             const inputType = document.getElementById('workflowInputType').value;
             const apiEndpoint = document.getElementById('workflowApiEndpoint').value.trim();
             const apiKey = document.getElementById('workflowApiKey').value.trim();
+            const apiModel = document.getElementById('workflowApiModel').value.trim();
             const description = document.getElementById('workflowDescription').value.trim();
             const customPrompt = document.getElementById('workflowCustomPrompt').value.trim();
             const editIndex = parseInt(document.getElementById('workflowEditIndex').value);
@@ -852,6 +890,7 @@
                 input_type: inputType,
                 api_endpoint: apiEndpoint,
                 api_key: apiKey,
+                api_model: apiModel,
                 description,
                 custom_prompt: customPrompt
             };
@@ -898,6 +937,155 @@
                 .finally(() => {
                     hideLoader(workflowsLoader);
                 });
+        }
+
+        function fetchWorkflowModels(showFeedback = true) {
+            if (showFeedback) {
+                showLoader(workflowModelsLoader);
+                hideMessage(workflowsSuccess);
+                hideMessage(workflowsError);
+            }
+
+            // 检查是否有URL和API Key
+            if (!workflowApiEndpoint.value.trim()) {
+                if (showFeedback) {
+                    showError(workflowsError, 'Please enter API Endpoint first.');
+                    hideLoader(workflowModelsLoader);
+                }
+                return;
+            }
+
+            fetch('/get_api_models', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    url: workflowApiEndpoint.value.trim(),
+                    api_key: workflowApiKey.value.trim()
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        if (showFeedback) {
+                            showError(workflowsError, 'Failed to fetch models: ' + data.error);
+                        }
+                        return;
+                    }
+
+                    // 更新下拉列表
+                    updateWorkflowModelDropdown(data.models || []);
+
+                    if (showFeedback) {
+                        showMessage(workflowsSuccess, `Successfully fetched ${data.models.length} models.`);
+                        setTimeout(() => hideMessage(workflowsSuccess), 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching models:', error);
+                    if (showFeedback) {
+                        showError(workflowsError, 'Failed to fetch models: ' + error.message);
+                    }
+                })
+                .finally(() => {
+                    if (showFeedback) {
+                        hideLoader(workflowModelsLoader);
+                    }
+                });
+        }
+
+        function updateWorkflowModelDropdown(models) {
+            workflowModelDropdown.innerHTML = '';
+
+            if (models.length === 0) {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                item.textContent = 'No models found';
+                workflowModelDropdown.appendChild(item);
+                return;
+            }
+
+            models.forEach(model => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                item.textContent = model;
+                item.addEventListener('click', () => {
+                    workflowApiModel.value = model;
+                    hideWorkflowDropdown();
+                });
+                workflowModelDropdown.appendChild(item);
+            });
+        }
+
+        function filterWorkflowModelDropdown() {
+            const filter = workflowApiModel.value.toLowerCase();
+            const items = workflowModelDropdown.getElementsByClassName('dropdown-item');
+
+            let hasVisibleItems = false;
+
+            for (let i = 0; i < items.length; i++) {
+                const text = items[i].textContent.toLowerCase();
+                if (text.includes(filter)) {
+                    items[i].style.display = '';
+                    hasVisibleItems = true;
+                } else {
+                    items[i].style.display = 'none';
+                }
+            }
+
+            if (!hasVisibleItems && items.length > 0) {
+                // 没有匹配项，显示"无匹配"消息
+                if (workflowModelDropdown.querySelector('.no-match') === null) {
+                    const noMatch = document.createElement('div');
+                    noMatch.className = 'dropdown-item no-match';
+                    noMatch.textContent = 'No matching models';
+                    workflowModelDropdown.appendChild(noMatch);
+                }
+            } else {
+                // 移除可能存在的"无匹配"消息
+                const noMatch = workflowModelDropdown.querySelector('.no-match');
+                if (noMatch) {
+                    noMatch.remove();
+                }
+            }
+        }
+
+        function setupWorkflowModelDropdown() {
+            // 点击输入框显示下拉框
+            workflowApiModel.addEventListener('click', () => {
+                showWorkflowDropdown();
+            });
+
+            // 输入时过滤下拉框
+            workflowApiModel.addEventListener('input', () => {
+                if (!workflowModelDropdown.classList.contains('show')) {
+                    showWorkflowDropdown();
+                }
+                filterWorkflowModelDropdown();
+            });
+
+            // 点击其他地方时隐藏下拉框
+            document.addEventListener('click', (e) => {
+                if (!workflowApiModel.contains(e.target) && !workflowModelDropdown.contains(e.target)) {
+                    hideWorkflowDropdown();
+                }
+            });
+
+            // 键盘事件处理
+            workflowApiModel.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideWorkflowDropdown();
+                }
+            });
+        }
+
+        function showWorkflowDropdown() {
+            workflowModelDropdown.classList.add('show');
+        }
+
+        function hideWorkflowDropdown() {
+            workflowModelDropdown.classList.remove('show');
         }
 
         // 工作流编辑和删除函数，使用全局函数以便从HTML中调用

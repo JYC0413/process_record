@@ -142,6 +142,8 @@
             padding: 30px;
             margin-bottom: 30px;
             transition: all 0.3s ease;
+            position: relative;
+            z-index: 1000;
         }
 
         .section:hover {
@@ -220,6 +222,8 @@
         }
 
         .tab-content.active {
+            position: relative;
+            z-index: 1;
             display: block;
         }
 
@@ -378,7 +382,6 @@
             background: #1f1f3f;
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 10px;
-            margin-top: 5px;
             z-index: 1000;
             display: none;
         }
@@ -396,6 +399,54 @@
         .dropdown-list.show {
             display: block;
         }
+
+        /* 文件夹列表样式 */
+        .folder-list {
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .folder-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .folder-item:last-child {
+            border-bottom: none;
+        }
+
+        .folder-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .folder-item.selected {
+            background: rgba(102, 126, 234, 0.2);
+            border-left: 4px solid #667eea;
+        }
+
+        .folder-name {
+            font-weight: 500;
+        }
+
+        .folder-info {
+            font-size: 0.8rem;
+            color: #b0b0b0;
+        }
+
+        .folder-time {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-align: right;
+        }
     </style>
 </head>
 <body>
@@ -403,48 +454,7 @@
         <div class="header-container">
             <h1>Meeting Audio Processing</h1>
             <div style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; gap: 10px;">
-                <button id="settingsBtn" class="settings-btn" title="Settings">⚙️</button>
-            </div>
-        </div>
-
-        <!-- 设置模态框 -->
-        <div id="settingsModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <span class="close-modal">&times;</span>
-                    <h2>Settings</h2>
-                </div>
-                <div class="modal-body">
-                    <form id="settingsForm">
-                        <div class="form-group">
-                            <label>Whisper API URL:</label>
-                            <input type="text" id="whisperApiUrl" name="whisper_api_url" placeholder="https://whisper.gaia.domains/v1/audio/transcriptions" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                        </div>
-                        <div class="form-group">
-                            <label>Whisper API Key:</label>
-                            <input type="password" id="whisperApiKey" name="whisper_api_key" placeholder="Enter API Key" style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                        </div>
-                        <div class="form-group">
-                            <label>Whisper Model:</label>
-                            <div class="search-container">
-                                <input type="text" id="whisperApiModel" name="whisper_api_model" placeholder="Select or type model name" style="width:100%;padding:12px 16px;padding-right:40px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                                <span class="dropdown-arrow">▼</span>
-                                <div id="modelDropdown" class="dropdown-list">
-                                    <!-- Models will be loaded here -->
-                                    <div class="dropdown-item">Loading models...</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="btn-container">
-                            <button type="submit" class="btn" id="saveSettingsBtn">Save Settings</button>
-                            <button type="button" class="btn" id="fetchModelsBtn" style="background:linear-gradient(135deg, #3498db 0%, #2980b9 100%);">Fetch Models</button>
-                            <div class="loader" id="settingsLoader" style="display:none;"></div>
-                        </div>
-                    </form>
-                    <div id="settingsSaved" class="success-message">
-                        Settings saved successfully! Changes will apply to all new requests.
-                    </div>
-                </div>
+                <button onclick="window.open('/config','_blank')" class="settings-btn" title="Settings">⚙️</button>
             </div>
         </div>
 
@@ -457,6 +467,27 @@
                 <span class="tab-icon">🔄</span>
                 Send to Workflow
             </button>
+        </div>
+
+        <!-- 新增：文件夹选择部分 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-icon">📁</div>
+                <h2>Select Recording Folder</h2>
+            </div>
+            <div class="form-group">
+                <div class="search-container">
+                    <input type="text" id="folderSearchInput" class="search-input" placeholder="Search or select a folder" style="width:100%;padding:12px 16px;padding-right:40px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                    <span class="dropdown-arrow">▼</span>
+                    <div id="folderDropdown" class="dropdown-list">
+                        <div class="dropdown-item" data-folder-path="" data-start-time="" data-end-time="">All Folders</div>
+                        <!-- Folders will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            <div id="selectedFolderInfo" style="margin-top: 10px; font-size: 0.9rem; color: #b0b0b0; display: none;">
+                <!-- Selected folder info will be shown here -->
+            </div>
         </div>
 
         <div id="downloadTab" class="tab-content active">
@@ -474,6 +505,8 @@
                         <label>End Time:</label>
                         <input type="datetime-local" name="end_time" required step="1">
                     </div>
+                    <!-- 添加隐藏的文件夹路径输入 -->
+                    <input type="hidden" name="folder_path" id="downloadFolderPath" value="">
                     <div class="btn-container">
                         <button type="submit" class="btn">Download Merged Audio</button>
                         <div class="loader" id="downloadLoader"></div>
@@ -497,6 +530,8 @@
                         <label>End Time:</label>
                         <input type="datetime-local" name="end_time" required step="1">
                     </div>
+                    <!-- 添加隐藏的文件夹路径输入 -->
+                    <input type="hidden" name="folder_path" id="workflowFolderPath" value="">
 
                     <!-- 处理类型选择 -->
                     <div class="form-group">
@@ -648,275 +683,6 @@
             btn.style.cursor = '';
         }
 
-        // 设置模态框功能
-        document.addEventListener('DOMContentLoaded', function() {
-            // 获取模态框元素
-            const modal = document.getElementById('settingsModal');
-            const btn = document.getElementById('settingsBtn');
-            const closeBtn = document.querySelector('.close-modal');
-            const settingsForm = document.getElementById('settingsForm');
-            const settingsSaved = document.getElementById('settingsSaved');
-            const whisperApiUrl = document.getElementById('whisperApiUrl');
-            const whisperApiKey = document.getElementById('whisperApiKey');
-            const whisperApiModel = document.getElementById('whisperApiModel');
-            const fetchModelsBtn = document.getElementById('fetchModelsBtn');
-            const modelDropdown = document.getElementById('modelDropdown');
-
-            // 存储Whisper API设置到localStorage
-            function saveSettingsToLocalStorage() {
-                const settings = {
-                    url: whisperApiUrl.value.trim() || "https://whisper.gaia.domains/v1/audio/transcriptions",
-                    api_key: whisperApiKey.value.trim() || "",
-                    model: whisperApiModel.value.trim() || ""
-                };
-                localStorage.setItem('whisperApiSettings', JSON.stringify(settings));
-            }
-
-            // 从localStorage读取Whisper API设置
-            function getSettingsFromLocalStorage() {
-                const settings = localStorage.getItem('whisperApiSettings');
-                return settings ? JSON.parse(settings) : null;
-            }
-
-            // 当用户点击设置按钮时，打开模态框
-            btn.onclick = function() {
-                // 打开模态框前加载当前设置
-                disableButton(btn);
-                loadCurrentSettings();
-                modal.style.display = "block";
-                enableButton(btn);
-            }
-
-            // 当用户点击 X 按钮时，关闭模态框
-            closeBtn.onclick = function() {
-                modal.style.display = "none";
-                // 隐藏成功消息
-                settingsSaved.style.display = "none";
-            }
-
-            // 当用户点击模态框外部时，关闭模态框
-            window.onclick = function(event) {
-                if (event.target === modal) {
-                    modal.style.display = "none";
-                    // 隐藏成功消息
-                    settingsSaved.style.display = "none";
-                }
-            }
-
-            // 加载当前设置
-            function loadCurrentSettings() {
-                // 首先尝试从localStorage加载
-                const localSettings = getSettingsFromLocalStorage();
-
-                if (localSettings) {
-                    whisperApiUrl.value = localSettings.url || "";
-                    whisperApiKey.value = localSettings.api_key || "";
-                    whisperApiModel.value = localSettings.model || "";
-
-                    // 如果有URL和Key，自动尝试获取模型列表
-                    if (localSettings.url && localSettings.api_key) {
-                        fetchWhisperModels(false); // 静默获取
-                    }
-                } else {
-                    // 如果localStorage中没有，则从服务器获取默认设置
-                    fetch('/get_config')
-                        .then(response => response.json())
-                        .then(data => {
-                            const whisperConfig = data.whisper_api || {};
-                            whisperApiUrl.value = whisperConfig.url || "";
-                            whisperApiKey.value = whisperConfig.api_key || "";
-                            whisperApiModel.value = whisperConfig.model || "";
-
-                            // 如果有URL和Key，自动尝试获取模型列表
-                            if (whisperConfig.url && whisperConfig.api_key) {
-                                fetchWhisperModels(false); // 静默获取
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error loading settings from server:', error);
-                        });
-                }
-            }
-
-            // 处理模型下拉框交互
-            setupModelDropdown();
-
-            // 获取模型列表按钮
-            fetchModelsBtn.addEventListener('click', function() {
-                fetchWhisperModels(true);
-            });
-
-            // 保存设置
-            settingsForm.onsubmit = function(e) {
-                e.preventDefault();
-
-                // 禁用保存按钮
-                const saveBtn = document.getElementById('saveSettingsBtn');
-                disableButton(saveBtn, 'Saving...');
-
-                // 保存到localStorage
-                saveSettingsToLocalStorage();
-
-                // 显示成功消息
-                settingsSaved.style.display = "block";
-
-                // 3秒后自动隐藏成功消息
-                setTimeout(() => {
-                    settingsSaved.style.display = "none";
-                }, 3000);
-
-                // 重新启用保存按钮
-                enableButton(saveBtn);
-            }
-
-            // 获取可用的Whisper模型
-            function fetchWhisperModels(showFeedback = true) {
-                if (showFeedback) {
-                    disableButton(fetchModelsBtn, 'Fetching...');
-                }
-
-                // 检查是否有URL
-                if (!whisperApiUrl.value.trim()) {
-                    if (showFeedback) {
-                        alert('Please enter Whisper API URL first');
-                        enableButton(fetchModelsBtn);
-                    }
-                    return;
-                }
-
-                fetch('/get_whisper_models', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            url: whisperApiUrl.value.trim(),
-                            api_key: whisperApiKey.value.trim()
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            if (showFeedback) {
-                                alert('Failed to fetch models: ' + data.error);
-                            }
-                            return;
-                        }
-
-                        // 更新下拉列表
-                        updateModelDropdown(data.models || []);
-
-                        if (showFeedback) {
-                            alert(`Successfully fetched ${data.models.length} models.`);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching models:', error);
-                        if (showFeedback) {
-                            alert('Failed to fetch models: ' + error.message);
-                        }
-                    })
-                    .finally(() => {
-                        if (showFeedback) {
-                            enableButton(fetchModelsBtn);
-                        }
-                    });
-            }
-
-            function updateModelDropdown(models) {
-                modelDropdown.innerHTML = '';
-
-                if (models.length === 0) {
-                    const item = document.createElement('div');
-                    item.className = 'dropdown-item';
-                    item.textContent = 'No models found';
-                    modelDropdown.appendChild(item);
-                    return;
-                }
-
-                models.forEach(model => {
-                    const item = document.createElement('div');
-                    item.className = 'dropdown-item';
-                    item.textContent = model;
-                    item.addEventListener('click', () => {
-                        whisperApiModel.value = model;
-                        hideDropdown();
-                    });
-                    modelDropdown.appendChild(item);
-                });
-            }
-
-            function filterModelDropdown() {
-                const filter = whisperApiModel.value.toLowerCase();
-                const items = modelDropdown.getElementsByClassName('dropdown-item');
-
-                let hasVisibleItems = false;
-
-                for (let i = 0; i < items.length; i++) {
-                    const text = items[i].textContent.toLowerCase();
-                    if (text.includes(filter)) {
-                        items[i].style.display = '';
-                        hasVisibleItems = true;
-                    } else {
-                        items[i].style.display = 'none';
-                    }
-                }
-
-                if (!hasVisibleItems && items.length > 0) {
-                    // 没有匹配项，显示"无匹配"消息
-                    if (modelDropdown.querySelector('.no-match') === null) {
-                        const noMatch = document.createElement('div');
-                        noMatch.className = 'dropdown-item no-match';
-                        noMatch.textContent = 'No matching models';
-                        modelDropdown.appendChild(noMatch);
-                    }
-                } else {
-                    // 移除可能存在的"无匹配"消息
-                    const noMatch = modelDropdown.querySelector('.no-match');
-                    if (noMatch) {
-                        noMatch.remove();
-                    }
-                }
-            }
-
-            function setupModelDropdown() {
-                // 点击输入框显示下拉框
-                whisperApiModel.addEventListener('click', () => {
-                    showDropdown();
-                });
-
-                // 输入时过滤下拉框
-                whisperApiModel.addEventListener('input', () => {
-                    if (!modelDropdown.classList.contains('show')) {
-                        showDropdown();
-                    }
-                    filterModelDropdown();
-                });
-
-                // 点击其他地方时隐藏下拉框
-                document.addEventListener('click', (e) => {
-                    if (!whisperApiModel.contains(e.target) && !modelDropdown.contains(e.target)) {
-                        hideDropdown();
-                    }
-                });
-
-                // 键盘事件处理
-                whisperApiModel.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') {
-                        hideDropdown();
-                    }
-                });
-            }
-
-            function showDropdown() {
-                modelDropdown.classList.add('show');
-            }
-
-            function hideDropdown() {
-                modelDropdown.classList.remove('show');
-            }
-        });
-
         function openTab(evt, tabName) {
             let i, tabcontent, tablinks;
             tabcontent = document.getElementsByClassName("tab-content");
@@ -1063,7 +829,7 @@
                 startAudioWorkflow(this);
             });
 
-            // 文本处理按钮��件
+            // 文本处理按钮事件
             document.getElementById('btnStartTextWorkflow').addEventListener('click', function() {
                 disableButton(this, 'Processing...');
                 startTextWorkflow(this);
@@ -1090,6 +856,7 @@
             const startTime = form.querySelector('input[name="start_time"]').value;
             const endTime = form.querySelector('input[name="end_time"]').value;
             const selectedLanguage = form.querySelector('#languageSelect').value;
+            const folderPath = document.getElementById('workflowFolderPath').value;
 
             if (!startTime || !endTime) {
                 alert('Please select both start and end times.');
@@ -1103,6 +870,11 @@
             formData.set('start_time', toUTCString(startTime));
             formData.set('end_time', toUTCString(endTime));
             formData.set('language', selectedLanguage);
+
+            // 添加文件夹路径
+            if (folderPath) {
+                formData.set('folder_path', folderPath);
+            }
 
             // 添加Whisper API设置
             const whisperSettings = getCurrentWhisperSettings();
@@ -1168,6 +940,7 @@
             const startTime = form.querySelector('input[name="start_time"]').value;
             const endTime = form.querySelector('input[name="end_time"]').value;
             const selectedWorkflow = document.getElementById('audioWorkflowSelect').value;
+            const folderPath = document.getElementById('workflowFolderPath').value;
 
             if (!startTime || !endTime) {
                 alert('Please select both start and end times.');
@@ -1186,6 +959,11 @@
             formData.set('end_time', toUTCString(endTime));
             formData.set('selected_workflow', selectedWorkflow);
             formData.set('input_type', 'audio');
+
+            // 添加文件夹路径
+            if (folderPath) {
+                formData.set('folder_path', folderPath);
+            }
 
             // 添加Whisper API设置
             const whisperSettings = getCurrentWhisperSettings();
@@ -1238,6 +1016,7 @@
             const endTime = form.querySelector('input[name="end_time"]').value;
             const selectedWorkflow = document.getElementById('textWorkflowSelect').value;
             const transcript = document.getElementById('transcribeTextarea').value;
+            const folderPath = document.getElementById('workflowFolderPath').value;
 
             if (!startTime || !endTime) {
                 alert('Please select both start and end times.');
@@ -1263,6 +1042,11 @@
             formData.set('selected_workflow', selectedWorkflow);
             formData.set('transcript', transcript);
             formData.set('input_type', 'text');
+
+            // 添加文件夹路径
+            if (folderPath) {
+                formData.set('folder_path', folderPath);
+            }
 
             // 添加Whisper API设置
             const whisperSettings = getCurrentWhisperSettings();
@@ -1391,8 +1175,174 @@
             return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
         }
 
+        // 新增：文件夹搜索与选择功能
+        function setupFolderSearch() {
+            const searchInput = document.getElementById('folderSearchInput');
+            const folderDropdown = document.getElementById('folderDropdown');
+            const selectedFolderInfo = document.getElementById('selectedFolderInfo');
+
+            // 点击输入框显示下拉框
+            searchInput.addEventListener('click', () => {
+                folderDropdown.classList.add('show');
+            });
+
+            // 输入时过滤下拉框选项
+            searchInput.addEventListener('input', () => {
+                const filter = searchInput.value.toLowerCase();
+                const items = folderDropdown.getElementsByClassName('dropdown-item');
+
+                let hasVisibleItems = false;
+
+                for (let i = 0; i < items.length; i++) {
+                    const text = items[i].textContent.toLowerCase();
+                    if (text.includes(filter)) {
+                        items[i].style.display = '';
+                        hasVisibleItems = true;
+                    } else {
+                        items[i].style.display = 'none';
+                    }
+                }
+
+                if (!folderDropdown.classList.contains('show')) {
+                    folderDropdown.classList.add('show');
+                }
+            });
+
+            // 点击其他地方时隐藏下拉框
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !folderDropdown.contains(e.target)) {
+                    folderDropdown.classList.remove('show');
+                }
+            });
+        }
+
+        // 修改：加载文件夹列表到下拉框
+        function loadFolderList() {
+            fetch('/get_folders')
+                .then(response => response.json())
+                .then(data => {
+                    const folderDropdown = document.getElementById('folderDropdown');
+                    // 保留"All Folders"选项，清除其他选项
+                    const allFoldersOption = folderDropdown.querySelector('.dropdown-item');
+                    folderDropdown.innerHTML = '';
+                    folderDropdown.appendChild(allFoldersOption);
+
+                    if (!data.folders || data.folders.length === 0) {
+                        const noFolders = document.createElement('div');
+                        noFolders.className = 'dropdown-item';
+                        noFolders.textContent = 'No recording folders found';
+                        folderDropdown.appendChild(noFolders);
+                        return;
+                    }
+
+                    data.folders.forEach(folder => {
+                        const folderItem = document.createElement('div');
+                        folderItem.className = 'dropdown-item';
+                        folderItem.textContent = folder.folder_name + ' (' + folder.start_time.replace("T"," ").split(".")[0] + ' - ' + folder.end_time.replace("T"," ").split(".")[0] + ')';
+                        folderItem.dataset.folderPath = folder.folder_path;
+                        folderItem.dataset.startTime = folder.start_time;
+                        folderItem.dataset.endTime = folder.end_time;
+                        folderItem.dataset.fileCount = folder.file_count;
+                        folderItem.dataset.durationMinutes = folder.duration_minutes;
+
+                        // 添加点击事件
+                        folderItem.addEventListener('click', () => {
+                            selectFolder(folderItem);
+                        });
+
+                        folderDropdown.appendChild(folderItem);
+                    });
+
+                    // 默认选择"All Folders"
+                    selectFolder(allFoldersOption);
+                    allFoldersOption.addEventListener('click', () => {
+                        selectFolder(allFoldersOption);
+                    })
+                })
+                .catch(error => {
+                    console.error('Error loading folders:', error);
+                    const folderDropdown = document.getElementById('folderDropdown');
+                    folderDropdown.innerHTML = '<div class="dropdown-item">Error loading folders</div>';
+                });
+        }
+
+        // 选择文件夹
+        function selectFolder(folderItem) {
+            const searchInput = document.getElementById('folderSearchInput');
+            const folderDropdown = document.getElementById('folderDropdown');
+            const selectedFolderInfo = document.getElementById('selectedFolderInfo');
+
+            // 设置输入框的值
+            searchInput.value = folderItem.textContent;
+
+            // 隐藏下拉框
+            folderDropdown.classList.remove('show');
+
+            // 设置隐藏的文件夹路径输入
+            document.getElementById('downloadFolderPath').value = folderItem.dataset.folderPath || '';
+            document.getElementById('workflowFolderPath').value = folderItem.dataset.folderPath || '';
+
+            // 显示所选文件夹信息
+            if (folderItem.textContent === 'All Folders') {
+                selectedFolderInfo.style.display = 'none';
+                // 对于"All Folders"，不自动设置时间范围
+            } else {
+                // 显示文件夹信息
+                selectedFolderInfo.innerHTML = `
+                    <strong>${folderItem.dataset.folderPath}</strong>:
+                    ${folderItem.dataset.fileCount} files,
+                    ${folderItem.dataset.durationMinutes} minutes
+                `;
+                selectedFolderInfo.style.display = '';
+
+                // 设置时间范围
+                if (folderItem.dataset.startTime && folderItem.dataset.endTime) {
+                    setTimeRangeFromFolder({
+                        start_time: folderItem.dataset.startTime,
+                        end_time: folderItem.dataset.endTime
+                    });
+                }
+            }
+        }
+
+        // 设置时间范围从选定的文件夹
+        function setTimeRangeFromFolder(folder) {
+            const startDate = new Date(folder.start_time);
+            const endDate = new Date(folder.end_time);
+
+            // 格式化为本地datetime-local格式
+            const startTimeFormatted = toLocalISOString(startDate);
+            const endTimeFormatted = toLocalISOString(endDate);
+
+            // 设置所有时间输入框
+            document.querySelectorAll('input[name="start_time"]').forEach(input => {
+                input.value = startTimeFormatted;
+            });
+
+            document.querySelectorAll('input[name="end_time"]').forEach(input => {
+                input.value = endTimeFormatted;
+            });
+        }
+
+        // 格式化日期时间显示
+        function formatDateTime(date) {
+            const options = {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return date.toLocaleDateString(undefined, options);
+        }
+
         // 设置默认时间范围
         window.onload = function() {
+            // 初始化文件夹搜索功能
+            setupFolderSearch();
+
+            // 加载文件夹列表
+            loadFolderList();
+
             const now = new Date();
             const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
             const oneHourLater = new Date(now.getTime());
@@ -1407,66 +1357,6 @@
                 input.value = toLocalISOString(oneHourLater);
             });
         }
-
-        // 保留与下载相关的表单处理
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('downloadForm').onsubmit = async function(e) {
-                e.preventDefault();
-
-                // 禁用下载按钮
-                const downloadBtn = this.querySelector('button[type="submit"]');
-                disableButton(downloadBtn, 'Downloading...');
-
-                const form = this;
-                const startInput = form.querySelector('input[name="start_time"]');
-                const endInput = form.querySelector('input[name="end_time"]');
-
-                const formData = new FormData();
-                formData.append('start_time', toUTCString(startInput.value));
-                formData.append('end_time', toUTCString(endInput.value));
-
-                // 添加Whisper API设置
-                const whisperSettings = getCurrentWhisperSettings();
-                if (whisperSettings) {
-                    formData.append('whisper_api_url', whisperSettings.url);
-                    formData.append('whisper_api_key', whisperSettings.api_key);
-                    formData.append('whisper_api_model', whisperSettings.model);
-                }
-
-                try {
-                    const resp = await fetch('/download', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (resp.ok) {
-                        const blob = await resp.blob();
-                        // 尝试从header获取文件名
-                        let filename = 'audio.wav';
-                        const disposition = resp.headers.get('Content-Disposition');
-                        if (disposition && disposition.indexOf('filename=') !== -1) {
-                            filename = decodeURIComponent(disposition.split('filename=')[1].replace(/['"]/g, ''));
-                        }
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        window.URL.revokeObjectURL(url);
-                    } else {
-                        console.log(resp)
-                        const data = await resp.json();
-                        alert('下载失败: ' + (data.message || '未知错误'));
-                    }
-                } catch (err) {
-                    alert('请求出错: ' + err.message);
-                } finally {
-                    enableButton(downloadBtn);
-                }
-            }
-        });
     </script>
 </body>
 </html>

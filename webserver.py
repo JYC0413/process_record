@@ -112,12 +112,12 @@ LANGUAGE_MAPPING = {
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
 
-AUDIO_DIR = r"../../michael/echokit/9090/record"
+AUDIO_DIR = r"./record"
 
 
 def parse_timestamp_from_filename(filename):
     try:
-        match = re.search(r'recording_(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2})', filename)
+        match = re.search(r'recording_(\d{4}-\d{2}-\d{2}T\d{2}_\d{2}_\d{2}\.\d+\+\d{2}_\d{2})', filename)
         if match:
             time_str = match.group(1)
 
@@ -133,14 +133,75 @@ def parse_timestamp_from_filename(filename):
         return None
 
 
-def get_files_in_range(start_time, end_time):
+def get_folders_with_audio():
+    """遍历AUDIO_DIR下的所有文件夹，返回包含录音文件的文件夹及其时间范围"""
+    result = []
+
+    # 获取AUDIO_DIR下的所有直接子文件夹
+    for item in os.listdir(AUDIO_DIR):
+        folder_path = os.path.join(AUDIO_DIR, item)
+
+        # 如果不是文件夹，跳过
+        if not os.path.isdir(folder_path):
+            continue
+
+        # 查找文件夹中的录音文件
+        wav_files = []
+        for root, _, files in os.walk(folder_path):
+            for fname in files:
+                if fname.endswith(".wav") and fname.startswith("recording_"):
+                    ts = parse_timestamp_from_filename(fname)
+                    if ts:
+                        wav_files.append((ts, os.path.join(root, fname)))
+
+        # 如果文件夹中有录音文件
+        if wav_files:
+            # 按时间戳排序
+            wav_files.sort()
+
+            # 获取最早和最晚的时间戳
+            earliest_time = wav_files[0][0]
+            latest_time = wav_files[-1][0]
+
+            # 计算持续时间（分钟）
+            duration_minutes = (latest_time - earliest_time).total_seconds() / 60
+
+            # 添加到结果列表
+            result.append({
+                "folder_name": item,
+                "folder_path": os.path.relpath(folder_path, AUDIO_DIR),
+                "start_time": earliest_time.isoformat(),
+                "end_time": latest_time.isoformat(),
+                "duration_minutes": round(duration_minutes, 1),
+                "file_count": len(wav_files)
+            })
+
+    # 按开始时间排序
+    result.sort(key=lambda x: x["start_time"])
+
+    return result
+
+def get_files_in_range(start_time, end_time, folder_path=None):
     files = []
-    for root, _, fnames in os.walk(AUDIO_DIR):
-        for fname in fnames:
-            if fname.endswith(".wav") and fname.startswith("recording_"):
-                ts = parse_timestamp_from_filename(fname)
-                if ts and start_time <= ts <= end_time:
-                    files.append((ts, os.path.relpath(os.path.join(root, fname), AUDIO_DIR)))
+
+    # 如果指定了文件夹路径，只在该路径下查找
+    if folder_path:
+        search_path = os.path.join(AUDIO_DIR, folder_path)
+        for root, _, fnames in os.walk(search_path):
+            for fname in fnames:
+                if fname.endswith(".wav") and fname.startswith("recording_"):
+                    ts = parse_timestamp_from_filename(fname)
+                    if ts and start_time <= ts <= end_time:
+                        files.append((ts, os.path.relpath(os.path.join(root, fname), AUDIO_DIR)))
+    else:
+        # 原有逻辑，在整个AUDIO_DIR下查找
+        for root, _, fnames in os.walk(AUDIO_DIR):
+            for fname in fnames:
+                if fname.endswith(".wav") and fname.startswith("recording_"):
+                    ts = parse_timestamp_from_filename(fname)
+                    if ts and start_time <= ts <= end_time:
+                        files.append((ts, os.path.relpath(os.path.join(root, fname), AUDIO_DIR)))
+
     files.sort()
     return [fname for ts, fname in files]
 
@@ -286,15 +347,27 @@ def update_full_config():
         return jsonify({"status": "error", "message": f"Failed to update config: {str(e)}"}), 500
 
 
+@app.route("/get_folders", methods=["GET"])
+def get_folders():
+    """返回包含录音文件的文件夹���表及其时间范围"""
+    folders = get_folders_with_audio()
+    return jsonify({"folders": folders})
+
+
 @app.route("/download", methods=["POST"])
 def download():
     start = request.form.get("start_time")
     end = request.form.get("end_time")
+    folder_path = request.form.get("folder_path", "")  # 获取可选的文件夹路径参数
+
     if not start or not end:
         return jsonify({"message": "Invalid time range"}), 400
     start_dt = datetime.fromisoformat(start)
     end_dt = datetime.fromisoformat(end)
-    files = get_files_in_range(start_dt, end_dt)
+
+    # 使用可选的folder_path参数调用get_files_in_range
+    files = get_files_in_range(start_dt, end_dt, folder_path)
+
     if not files:
         return jsonify({"message": "No files found in range"}), 404
     merged_audio = merge_wav_files(files)
@@ -344,19 +417,71 @@ def get_whisper_models():
     except Exception as e:
         return jsonify({"models": [], "error": f"Error fetching models: {str(e)}"}), 500
 
+@app.route("/get_api_models", methods=["POST"])
+def get_api_models():
+    """获取API提供的模型列表"""
+    try:
+        data = request.get_json()
+        api_url = data.get("url")
+        api_key = data.get("api_key", "")
+
+        # 从API URL中提取基础URL
+        base_url_parts = api_url.split("/v1/")
+        if len(base_url_parts) > 1:
+            base_url = base_url_parts[0]
+            models_url = f"{base_url}/v1/models"
+        else:
+            # 如果URL结构不是预期的，尝试猜测
+            models_url = api_url.rsplit("/", 1)[0] + "/models"
+
+        print(f"Fetching API models from: {models_url}")
+        headers = {}
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
+
+        with httpx.Client() as client:
+            response = client.get(models_url, headers=headers, timeout=30.0)
+            if response.status_code == 200:
+                models_data = response.json()
+                print(f"Received models data: {models_data}")
+                # 尝试提取模型列表
+                models = []
+
+                # 常见的API响应结构处理
+                if 'data' in models_data and isinstance(models_data['data'], list):
+                    # OpenAI类似格式
+                    models = [model['id'] for model in models_data['data']]
+                elif 'models' in models_data and isinstance(models_data['models'], list):
+                    # 另一种常见格式
+                    models = [model['id'] if isinstance(model, dict) and 'id' in model else model
+                             for model in models_data['models']]
+                elif isinstance(models_data, list):
+                    # 直接返回模型列表的情况
+                    models = [model['id'] if isinstance(model, dict) and 'id' in model else model
+                             for model in models_data]
+
+                return jsonify({"models": models})
+            else:
+                return jsonify({"models": [], "error": f"Failed to get models: {response.status_code}"}), response.status_code
+    except Exception as e:
+        return jsonify({"models": [], "error": f"Error fetching models: {str(e)}"}), 500
+
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
     """处理音频转文字的接口，使用WebSocket通知进度"""
     start = request.form.get("start_time")
     end = request.form.get("end_time")
-    # 获取用户选择的语言，默认为auto（自动检测）
     selected_language = request.form.get("language", "auto")
+    folder_path = request.form.get("folder_path", "")  # 获取可选的文件夹路径参数
 
     if not start or not end:
         return jsonify({"message": "Invalid time range"}), 400
     start_dt = datetime.fromisoformat(start)
     end_dt = datetime.fromisoformat(end)
-    files = get_files_in_range(start_dt, end_dt)
+
+    # 使用可选的folder_path参数调用get_files_in_range
+    files = get_files_in_range(start_dt, end_dt, folder_path)
+
     if not files:
         return jsonify({"message": "No files found in range"}), 404
 
@@ -538,6 +663,7 @@ def process_workflow():
     custom_api_key = request.form.get("text_api_key") or request.form.get("audio_api_key")
     custom_prompt = request.form.get("custom_prompt", "")
     input_type = request.form.get("input_type", "text")  # 默认为文本处理
+    folder_path = request.form.get("folder_path", "")  # 获取可选的文件夹路径参数
 
     # 获取选定的工作流配置
     workflow_config = None
@@ -558,12 +684,15 @@ def process_workflow():
     start_dt = datetime.fromisoformat(start)
     end_dt = datetime.fromisoformat(end)
 
-    files = get_files_in_range(start_dt, end_dt)
+    # 使用可选的folder_path参数调用get_files_in_range
+    files = get_files_in_range(start_dt, end_dt, folder_path)
+
     if not files and input_type == "audio":
         return jsonify({"message": "No files found in range"}), 404
 
     # 提取工作流配置
     api_url = workflow_config.get("api_endpoint") or custom_api_url
+    api_model = workflow_config.get("api_model", "")
 
     # 决定使用哪个API Key
     # 如果是自定义API工作流并且用户提供了API Key，则使用用户的
@@ -584,7 +713,6 @@ def process_workflow():
         if workflow_input_type == "text":
             # 使用 Gaia AI 处理
             if api_url:
-
                 payload = {
                     "messages": [
                         {
@@ -597,6 +725,11 @@ def process_workflow():
                         }
                     ]
                 }
+
+                # 如果有指定模型，添加到请求中
+                if api_model:
+                    payload["model"] = api_model
+
                 headers = {
                     'accept': 'application/json',
                     'Content-Type': 'application/json',
@@ -614,6 +747,9 @@ def process_workflow():
             # 使用自定义 API 处理文本
             elif api_url:
                 payload = {"text": transcript}
+                if api_model:
+                    payload["model"] = api_model
+
                 headers = {}
 
                 # 如果有API Key，添加到请求头中
@@ -642,13 +778,18 @@ def process_workflow():
             files_httpx = {"file": ("audio.wav", buf.getvalue(), "audio/wav")}
 
             headers = {}
+            data = {}
+
+            # 如果有指定模型，添加到请求中
+            if api_model:
+                data["model"] = api_model
 
             # 如果有API Key，添加到请求头中
             if api_key:
                 headers['Authorization'] = f'Bearer {api_key}'
 
             with httpx.Client() as client:
-                resp = client.post(api_url, files=files_httpx, headers=headers, timeout=120.0)
+                resp = client.post(api_url, files=files_httpx, data=data, headers=headers, timeout=120.0)
                 resp.raise_for_status()
                 if resp.headers.get("content-type", "").startswith("application/json"):
                     return resp.json()
