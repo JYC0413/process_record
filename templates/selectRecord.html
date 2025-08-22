@@ -859,14 +859,12 @@
 
     // 更新所有时间显示格式
     function updateAllTimeDisplays() {
-        console.log(isUTC)
 
         // 更新日期选择器
         const startTimeInputs = document.querySelectorAll('input[name="start_time"]');
         const endTimeInputs = document.querySelectorAll('input[name="end_time"]');
 
         startTimeInputs.forEach(input => {
-            console.log(input.value)
             if (input.value) {
                 const dateObj = new Date(input.value + (isUTC ? "" : "Z"));
                 input.value = isUTC ? toUTCISOString(dateObj) : toLocalISOString(dateObj);
@@ -1624,57 +1622,62 @@
     }
 
 
-    // 保留与下载相关的表单处理
-    document.addEventListener('DOMContentLoaded', function () {
-        document.getElementById('downloadForm').onsubmit = async function (e) {
-            e.preventDefault();
+// 保留与下载相关的表单处理
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('downloadForm').onsubmit = async function (e) {
+        e.preventDefault();
 
-            // 禁用下载按钮
-            const downloadBtn = this.querySelector('button[type="submit"]');
-            disableButton(downloadBtn, 'Downloading...');
+        // 禁用下载按钮
+        const downloadBtn = this.querySelector('button[type="submit"]');
+        disableButton(downloadBtn, 'Downloading...');
 
-            const form = this;
-            const startInput = form.querySelector('input[name="start_time"]');
-            const endInput = form.querySelector('input[name="end_time"]');
+        const form = this;
+        const startInput = form.querySelector('input[name="start_time"]');
+        const endInput = form.querySelector('input[name="end_time"]');
+        const folderPath = document.getElementById('downloadFolderPath').value;
 
-            const formData = new FormData();
-            formData.append('start_time', isUTC ? startInput.value : toUTCString(startInput.value));
-            formData.append('end_time', isUTC ? endInput.value : toUTCString(endInput.value));
+        const formData = new FormData();
+        formData.append('start_time', isUTC ? startInput.value : toUTCString(startInput.value));
+        formData.append('end_time', isUTC ? endInput.value : toUTCString(endInput.value));
 
-            try {
-                const resp = await fetch('/download', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (resp.ok) {
-                    const blob = await resp.blob();
-                    // 尝试从header获取文件名
-                    let filename = 'audio.wav';
-                    const disposition = resp.headers.get('Content-Disposition');
-                    if (disposition && disposition.indexOf('filename=') !== -1) {
-                        filename = decodeURIComponent(disposition.split('filename=')[1].replace(/['"]/g, ''));
-                    }
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
-                } else {
-                    console.log(resp)
-                    const data = await resp.json();
-                    alert('下载失败: ' + (data.message || '未知错误'));
-                }
-            } catch (err) {
-                alert('请求出错: ' + err.message);
-            } finally {
-                enableButton(downloadBtn);
-            }
+        // 添加文件夹路径参数
+        if (folderPath) {
+            formData.append('folder_path', folderPath);
         }
-    });
+
+        try {
+            const resp = await fetch('/download', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (resp.ok) {
+                const blob = await resp.blob();
+                // 尝试从header获取文件名
+                let filename = 'audio.wav';
+                const disposition = resp.headers.get('Content-Disposition');
+                if (disposition && disposition.indexOf('filename=') !== -1) {
+                    filename = decodeURIComponent(disposition.split('filename=')[1].replace(/['"]/g, ''));
+                }
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                const data = await resp.json();
+                alert('下载失败: ' + (data.message || '未知错误'));
+            }
+        } catch (err) {
+            alert('请求出错: ' + err.message);
+        } finally {
+            enableButton(downloadBtn);
+        }
+    }
+});
 
     // 聊天功能初始化
     function initChat() {

@@ -190,6 +190,7 @@ def get_files_in_range(start_time, end_time, folder_path=None):
     # 如果指定了文件夹路径，只在该路径下查找
     if folder_path:
         search_path = os.path.join(AUDIO_DIR, folder_path)
+        print(search_path)
         for root, _, fnames in os.walk(search_path):
             for fname in fnames:
                 if fname.endswith(".wav") and fname.startswith("recording_"):
