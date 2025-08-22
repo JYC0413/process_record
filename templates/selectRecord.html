@@ -889,16 +889,16 @@
         const folderItems = document.querySelectorAll('#folderDropdown .dropdown-item');
         folderItems.forEach(item => {
             if (item.dataset.utcStartTime && item.dataset.utcEndTime) {
-                const startTime = new Date(item.dataset.utcStartTime);
-                const endTime = new Date(item.dataset.utcEndTime);
+                const startTime = new Date(item.dataset.utcStartTime + "Z"); // 确保使用UTC时间
+                const endTime = new Date(item.dataset.utcEndTime + "Z");
 
                 const displayStartTime = isUTC ?
                     item.dataset.utcStartTime.replace('T', ' ').replace('Z', '').replaceAll('-0', '/').replaceAll('-', '/').split(".")[0] :
-                    new Date(item.dataset.utcStartTime).toLocaleString();
+                    startTime.toLocaleString();
 
                 const displayEndTime = isUTC ?
                     item.dataset.utcEndTime.replace('T', ' ').replace('Z', '').replaceAll('-0', '/').replaceAll('-', '/').split(".")[0] :
-                    new Date(item.dataset.utcEndTime).toLocaleString();
+                    endTime.toLocaleString();
 
                 // 更新文本显示
                 if (item.textContent !== 'All Folders' && item.textContent !== 'No recording folders found' && item.textContent !== 'Error loading folders') {
