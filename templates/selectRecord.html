@@ -518,6 +518,78 @@
             color: rgba(255, 255, 255, 0.6);
             text-align: right;
         }
+
+        /* 聊天界面样式 */
+        .chat-message {
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            max-width: 80%;
+        }
+
+        .user-message {
+            background: rgba(102, 126, 234, 0.15);
+            margin-left: auto;
+            border-top-right-radius: 2px;
+        }
+
+        .ai-message {
+            background: rgba(255, 255, 255, 0.05);
+            margin-right: auto;
+            border-top-left-radius: 2px;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        #sendMessage {
+            transition: all 0.3s;
+        }
+
+        #sendMessage:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: flex;
+            padding: 10px 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 10px;
+            width: fit-content;
+        }
+
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            display: block;
+            margin: 0 2px;
+            opacity: 0.4;
+        }
+
+        .typing-indicator span:nth-child(1) {
+            animation: bounce 1s infinite 0.1s;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation: bounce 1s infinite 0.3s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation: bounce 1s infinite 0.5s;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
     </style>
 </head>
 <body>
@@ -540,13 +612,13 @@
     </div>
 
     <div class="tab-container">
-        <button class="tab-btn-header active" onclick="openTab(event, 'downloadTab')">
+        <button class="tab-btn-header active" onclick="openTab(event, 'workflowTab')">
+            <span class="tab-icon">🔄</span>
+            Workflow
+        </button>
+        <button class="tab-btn-header" onclick="openTab(event, 'downloadTab')">
             <span class="tab-icon">🎧</span>
             Download Audio
-        </button>
-        <button class="tab-btn-header" onclick="openTab(event, 'workflowTab')">
-            <span class="tab-icon">🔄</span>
-            Send to Workflow
         </button>
     </div>
 
@@ -572,7 +644,7 @@
         </div>
     </div>
 
-    <div id="downloadTab" class="tab-content active">
+    <div id="downloadTab" class="tab-content">
         <div class="section">
             <div class="section-header">
                 <div class="section-icon">📥</div>
@@ -597,7 +669,7 @@
         </div>
     </div>
 
-    <div id="workflowTab" class="tab-content">
+    <div id="workflowTab" class="tab-content active">
         <div class="section">
             <div class="section-header">
                 <div class="section-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">🔄</div>
@@ -619,19 +691,19 @@
                 <div class="form-group">
                     <label>Processing Type:</label>
                     <div class="tab-container" style="margin-bottom:15px;">
-                        <button type="button" class="tab-btn active" id="processAudio">
-                            <span class="tab-icon">🔊</span>
-                            Process Audio Directly
-                        </button>
-                        <button type="button" class="tab-btn" id="processText">
+                        <button type="button" class="tab-btn active" id="processText">
                             <span class="tab-icon">📝</span>
-                            Process Transcript
+                            Transcribe and process text
+                        </button>
+                        <button type="button" class="tab-btn" id="processAudio">
+                            <span class="tab-icon">🔊</span>
+                            Process audio
                         </button>
                     </div>
                 </div>
 
                 <!-- 音频处理流程 (默认显示) -->
-                <div id="audioProcessSection">
+                <div id="audioProcessSection" style="display:none;">
                     <div class="form-group">
                         <label for="audioWorkflowSelect">Select Audio Workflow:</label>
                         <select id="audioWorkflowSelect" name="selected_workflow"
@@ -664,7 +736,7 @@
                 </div>
 
                 <!-- 文本处理流程 (默认隐藏) -->
-                <div id="textProcessSection" style="display:none;">
+                <div id="textProcessSection">
                     <div class="form-group" id="transcribeStatusSection">
                         <!-- 添加语言选择下拉菜单 -->
                         <div class="form-group">
@@ -752,6 +824,21 @@
                 <ul id="workflowSteps" style="margin-top:10px;font-size:14px;list-style:none;padding-left:0;"></ul>
             </div>
             <div id="workflowResult"></div>
+
+            <!-- 添加聊天界面 -->
+            <div id="chatInterface" style="display:none; margin-top:20px;">
+                <div class="section-header" style="margin-bottom:15px;">
+                    <div class="section-icon" style="background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);">💬</div>
+                    <h2>Result-based Conversation</h2>
+                </div>
+                <div id="chatHistory" style="max-height:300px; overflow-y:auto; margin-bottom:15px;">
+                    <!-- 聊天记录将在这里显示 -->
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <textarea id="userMessage" placeholder="Enter your question or instruction..." style="flex:1;"></textarea>
+                    <button id="sendMessage" class="btn" style="align-self:flex-end;">Send</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1271,6 +1358,11 @@
                 }
             } else {
                 container.innerText = result;
+                // 显示聊天界面
+                document.getElementById('chatInterface').style.display = 'block';
+                document.getElementById('btnStartTextWorkflow').style.display = 'none';
+                // 保存处理结果用于后续对话
+                container.dataset.content = result;
             }
         } else if (result && result.type && result.url) {
             // 后端返回结构化类型
@@ -1282,9 +1374,17 @@
                 container.innerHTML = `<a href="${result.url}" target="_blank">${result.url}</a>`;
             } else {
                 container.innerText = result.content || JSON.stringify(result);
+                // 显示聊天界面
+                document.getElementById('chatInterface').style.display = 'block';
+                // 保存处理结果用于后续对话
+                container.dataset.content = result.content || JSON.stringify(result);
             }
         } else {
             container.innerText = typeof result === 'object' ? JSON.stringify(result) : result;
+            // 显示聊天界面
+            document.getElementById('chatInterface').style.display = 'block';
+            // 保存处理结果用于后续对话
+            container.dataset.content = typeof result === 'object' ? JSON.stringify(result) : result;
         }
     }
 
@@ -1574,6 +1674,157 @@
                 enableButton(downloadBtn);
             }
         }
+    });
+
+    // 聊天功能初始化
+    function initChat() {
+        const sendButton = document.getElementById('sendMessage');
+        const userInput = document.getElementById('userMessage');
+        const chatHistory = document.getElementById('chatHistory');
+
+        // 聊天消息历史
+        let messageHistory = [];
+
+        // 发送按钮事件
+        sendButton.addEventListener('click', function() {
+            const userMessage = userInput.value.trim();
+            if (!userMessage) return;
+
+            // 禁用发送按钮和输入框
+            sendButton.disabled = true;
+            sendButton.innerText = 'Sending...';
+            userInput.disabled = true;
+
+            // 添加用户消息到界面
+            addMessage('user', userMessage);
+
+            // 记录用户消息
+            messageHistory.push({
+                role: 'user',
+                content: userMessage
+            });
+
+            // 清空输入框
+            userInput.value = '';
+
+            // 显示正在输入指示器
+            showTypingIndicator();
+
+            // 获取工作流结果内容
+            const workflowResult = document.getElementById('workflowResult').dataset.content || '';
+            const transcriptContent = document.getElementById('transcribeTextarea') ?
+                document.getElementById('transcribeTextarea').value : '';
+
+            // 获取当前选择的工作流
+            const workflowSelect = document.getElementById('textWorkflowSelect');
+            const selectedWorkflow = workflowSelect && workflowSelect.value ? workflowSelect.value : '';
+
+            // 发送聊天请求
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: userMessage,
+                    history: messageHistory,
+                    workflow_result: workflowResult,
+                    transcript: transcriptContent,
+                    selected_workflow: selectedWorkflow
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 移除正在输入指示器
+                removeTypingIndicator();
+
+                if (data && data.response) {
+                    // 添加AI回复到界面
+                    addMessage('ai', data.response);
+
+                    // 记录AI回复
+                    messageHistory.push({
+                        role: 'assistant',
+                        content: data.response
+                    });
+                } else {
+                    // 处理错误情况
+                    addMessage('ai', '抱歉，我无法处理您的请求。');
+                }
+            })
+            .catch(error => {
+                console.error('聊天请求错误:', error);
+                removeTypingIndicator();
+                addMessage('ai', '发生错误，请稍后再试。');
+            })
+            .finally(() => {
+                // 恢复发送按钮和输入框
+                sendButton.disabled = false;
+                sendButton.innerText = 'Send';
+                userInput.disabled = false;
+            });
+        });
+
+        // Enter键发送消息
+        userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendButton.click();
+            }
+        });
+
+        // 添加消息到聊天历史
+        function addMessage(type, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${type}-message`;
+
+            // 转换markdown格式（简单实现）
+            let formattedContent = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                .replace(/`(.*?)`/g, '<code>$1</code>')
+                .replace(/\n/g, '<br>');
+
+            messageDiv.innerHTML = formattedContent;
+
+            // 添加时间
+            const timeSpan = document.createElement('div');
+            timeSpan.className = 'message-time';
+            timeSpan.textContent = new Date().toLocaleTimeString();
+            messageDiv.appendChild(timeSpan);
+
+            chatHistory.appendChild(messageDiv);
+
+            // 滚动到底部
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        // 显示正在输入指示器
+        function showTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator';
+            indicator.id = 'typingIndicator';
+            indicator.innerHTML = '<span></span><span></span><span></span>';
+            chatHistory.appendChild(indicator);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        // 移除正在输入指示器
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+    }
+
+    // 初始化聊天功能
+    document.addEventListener('DOMContentLoaded', function () {
+        // ...existing code...
+
+        // 初始化聊天功能
+        initChat();
     });
 </script>
 </body>
