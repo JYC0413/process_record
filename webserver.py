@@ -36,7 +36,8 @@ def get_workflows_config():
             "whisper_api": {
                 "url": "https://whisper.gaia.domains/v1/audio/transcriptions",
                 "api_key": "",
-                "model": ""
+                "model": "",
+                "prompt": ""
             },
             "workflows": []
         }
@@ -47,10 +48,10 @@ def get_whisper_api_config():
     return (
         config.get("whisper_api", {}).get("url", "https://whisper.gaia.domains/v1/audio/transcriptions"),
         config.get("whisper_api", {}).get("api_key", ""),
-        config.get("whisper_api", {}).get("model", "")
+        config.get("whisper_api", {}).get("model", ""),
+        config.get("whisper_api", {}).get("prompt", "")
     )
 
-gaia_api_key = os.getenv("GAIA_API_KEY")
 
 language_id = EncoderClassifier.from_hparams(
     source="speechbrain/lang-id-commonlanguage_ecapa",
@@ -113,13 +114,13 @@ app = Flask(__name__)
 socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
 
 # AUDIO_DIR = r"./record"
-AUDIO_DIR = r"../../michael/echokit/9090/record"
+AUDIO_DIR = os.getenv("AUDIO_DIR")
 
 
 def parse_timestamp_from_filename(filename):
     try:
         # match = re.search(r'recording_(\d{4}-\d{2}-\d{2}T\d{2}_\d{2}_\d{2}\.\d+\+\d{2}_\d{2})', filename)
-        match = re.search(r'recording_(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2})', filename)
+        match = re.search(os.getenv("AUDIO_MATCH"), filename)
         if match:
             time_str = match.group(1)
 
@@ -538,7 +539,7 @@ def transcribe():
                     data = {}
 
                 # 动态获取 Whisper API 配置
-                whisper_url, whisper_api_key, whisper_model = get_whisper_api_config()
+                whisper_url, whisper_api_key, whisper_model, whisper_prompt = get_whisper_api_config()
                 headers = {}
                 if whisper_api_key:
                     headers['Authorization'] = f'Bearer {whisper_api_key}'
@@ -546,6 +547,10 @@ def transcribe():
                 # 如果设置了模型，添加到请求数据中
                 if whisper_model:
                     data['model'] = whisper_model
+
+                # 如果设置了prompt，添加到请求数据中
+                if whisper_prompt:
+                    data['prompt'] = whisper_prompt
 
                 # 添加重试机制，最多尝试3次
                 max_retries = 3
@@ -661,7 +666,7 @@ def process_workflow():
     end = request.form.get("end_time")
     selected_workflow = request.form.get("selected_workflow")
     transcript = request.form.get("transcript", "")
-    custom_api_url = request.form.get("custom_api_url") or request.form.get("text_api_url") or request.form.get("audio_api_url")
+    custom_api_url = request.form.get("text_api_url") or request.form.get("audio_api_url")
     custom_api_key = request.form.get("text_api_key") or request.form.get("audio_api_key")
     custom_prompt = request.form.get("custom_prompt", "")
     input_type = request.form.get("input_type", "text")  # 默认为文本处理
@@ -702,7 +707,7 @@ def process_workflow():
     if selected_workflow and "Custom API" in selected_workflow and custom_api_key:
         api_key = custom_api_key
     else:
-        api_key = workflow_config.get("api_key") or gaia_api_key
+        api_key = workflow_config.get("api_key")
 
     workflow_input_type = workflow_config.get("input_type", "text")
     workflow_custom_prompt = workflow_config.get("custom_prompt", "")
@@ -803,6 +808,128 @@ def process_workflow():
     except Exception as e:
         print(f"Error processing workflow: {str(e)}")
         return jsonify({"message": f"Error processing workflow: {str(e)}"}), 500
+
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    """处理基于转录结果的后续对话"""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "没有收到数据"}), 400
+
+        # 获取用户消息和历史记录
+        user_message = data.get("message", "")
+        message_history = data.get("history", [])
+        workflow_result = data.get("workflow_result", "")
+        transcript = data.get("transcript", "")
+        selected_workflow = data.get("selected_workflow", "")
+
+        # 获取选定的工作流配置
+        workflow_config = None
+        if selected_workflow:
+            for workflow in get_workflows_config().get("workflows", []):
+                if workflow.get("name") == selected_workflow:
+                    workflow_config = workflow
+                    break
+
+        # 使用默认的第一个文本工作流作为聊天API
+        if not workflow_config:
+            for workflow in get_workflows_config().get("workflows", []):
+                if workflow.get("input_type") == "text":
+                    workflow_config = workflow
+                    break
+
+        if not workflow_config:
+            return jsonify({"error": "找不到适合的API配置"}), 400
+
+        # 提取API配置
+        api_url = workflow_config.get("api_endpoint", "")
+        api_model = workflow_config.get("api_model", "")
+        api_key = workflow_config.get("api_key")
+
+        if not api_url:
+            return jsonify({"error": "未配置API端点"}), 400
+
+        # 构建系统消息，提供上下文
+        system_message = "你是一个AI助手。以下是一段会议内容的转录和分析结果，请基于这些信息回答用户的问题。"
+
+        # 如果有转录和处理结果，添加到系统消息中
+        context = ""
+        if transcript:
+            context += f"\n\n会议转录:\n{transcript}"
+        if workflow_result:
+            context += f"\n\n分析结果:\n{workflow_result}"
+
+        if context:
+            system_message += context
+
+        # 构建消息历史
+        messages = [{"role": "system", "content": system_message}]
+
+        # 只取最新的几轮对话，避免超出token限制
+        recent_messages = message_history[-10:] if len(message_history) > 10 else message_history
+        messages.extend(recent_messages)
+
+        # 准备请求负载
+        payload = {
+            "messages": messages
+        }
+
+        # 如果有指定模型，添加到请求中
+        if api_model:
+            payload["model"] = api_model
+
+        # 准备请求头
+        headers = {
+            'Content-Type': 'application/json'
+        }
+
+        # 添加API密钥（如果有）
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
+
+        # 发送请求
+        with httpx.Client() as client:
+            response = client.post(
+                api_url,
+                json=payload,
+                headers=headers,
+                timeout=60.0
+            )
+
+            # 检查响应
+            if response.status_code != 200:
+                print(f"API返回错误: {response.status_code}, {response.text}")
+                return jsonify({"error": f"API返回错误: {response.status_code}"}), 500
+
+            try:
+                result = response.json()
+                # 处理不同格式的API响应
+                if "choices" in result and result["choices"] and "message" in result["choices"][0]:
+                    # OpenAI格式响应
+                    ai_response = result["choices"][0]["message"]["content"]
+                elif "response" in result:
+                    # 自定义格式1
+                    ai_response = result["response"]
+                elif "content" in result:
+                    # 自定义格式2
+                    ai_response = result["content"]
+                elif "text" in result:
+                    # 自定义格式3
+                    ai_response = result["text"]
+                else:
+                    # 尝试将整个响应作为文本返回
+                    ai_response = str(result)
+
+                return jsonify({"response": ai_response})
+            except Exception as e:
+                print(f"处理API响应时出错: {str(e)}")
+                return jsonify({"error": f"处理API响应时出错: {str(e)}"}), 500
+
+    except Exception as e:
+        print(f"聊天处理出错: {str(e)}")
+        return jsonify({"error": f"处理请求时出错: {str(e)}"}), 500
 
 
 # 保留原接口用于向后兼容，但功能简化
