@@ -1358,7 +1358,6 @@
                 container.innerText = result;
                 // 显示聊天界面
                 document.getElementById('chatInterface').style.display = 'block';
-                document.getElementById('btnStartTextWorkflow').style.display = 'none';
                 // 保存处理结果用于后续对话
                 container.dataset.content = result;
             }
@@ -1384,6 +1383,8 @@
             // 保存处理结果用于后续对话
             container.dataset.content = typeof result === 'object' ? JSON.stringify(result) : result;
         }
+        document.getElementById('btnStartTextWorkflow').innerText = 'Regenerate';
+        document.getElementById('btnStartTextWorkflow').dataset.originalHtml = document.getElementById('btnStartTextWorkflow').innerHTML;
     }
 
     // 格式化时间 - 总是返回UTC格式，用于API请求
