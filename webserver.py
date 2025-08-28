@@ -192,7 +192,7 @@ def get_files_in_range(start_time, end_time, folder_path=None):
     # 如果指定了文件夹路径，只在该路径下查找
     if folder_path:
         search_path = os.path.join(AUDIO_DIR, folder_path)
-        print(search_path)
+        # print(search_path)
         for root, _, fnames in os.walk(search_path):
             for fname in fnames:
                 if fname.endswith(".wav") and fname.startswith("recording_"):
@@ -275,7 +275,7 @@ def merge_wav_files(file_list):
 def clear_file_name(filename):
     # 文件名里的T替换为_，并清理非法字符
     filename = filename.replace('T', '_')
-    print("Original filename:", filename)
+    # print("Original filename:", filename)
     return re.sub(r'[\\/:*?"<>|]', '_', filename)
 
 
@@ -395,7 +395,7 @@ def get_whisper_models():
     """获取可用的Whisper模型列表"""
     try:
         data = request.get_json()
-        print(data)
+        # print(data)
         whisper_url = data.get("url")
         whisper_api_key = data.get("api_key", "")
         # 从API URL中提取基础URL
@@ -1155,7 +1155,7 @@ def assign_speakers_to_transcript(transcript, diarization):
         # 收集该时间段内的所有说话人片段
         speaker_segments = []
         for turn, _, speaker in diarization.itertracks(yield_label=True):
-            print(f"Turn: {turn.start:.2f}-{turn.end:.2f}, Speaker: {speaker}")
+            # print(f"Turn: {turn.start:.2f}-{turn.end:.2f}, Speaker: {speaker}")
             # 检查说话人分区段与转录段是否有重叠
             if max(turn.start, start_seconds) < min(turn.end, end_seconds):
                 # 计算重叠部分的起止时间
@@ -1163,7 +1163,7 @@ def assign_speakers_to_transcript(transcript, diarization):
                 overlap_end = min(turn.end, end_seconds)
                 # 使用映射后的说话人ID
                 mapped_speaker = speaker_mapping.get(speaker, "SPEAKER_00")
-                print(f"mapped_speaker: {mapped_speaker}, overlap: {overlap_start:.2f}-{overlap_end:.2f}")
+                # print(f"mapped_speaker: {mapped_speaker}, overlap: {overlap_start:.2f}-{overlap_end:.2f}")
                 speaker_segments.append((overlap_start, overlap_end, mapped_speaker))
 
         # 对说话人片段按时间排序
