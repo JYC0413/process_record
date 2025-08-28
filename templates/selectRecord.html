@@ -590,6 +590,160 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-5px); }
         }
+
+        /* 说话人编辑弹窗样式 */
+        .speaker-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            overflow: auto;
+        }
+
+        .speaker-modal-content {
+            background: linear-gradient(135deg, #1f1f3f 0%, #1a1a2e 100%);
+            margin: 5% auto;
+            padding: 30px;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: modalFadeIn 0.3s ease;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .speaker-item {
+            margin-bottom: 25px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .speaker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .speaker-name-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 1rem;
+            width: 250px;
+        }
+
+        .utterance-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            position: relative;
+        }
+
+        .utterance-time {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+        }
+
+        .utterance-text {
+            color: #fff;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .play-audio-btn {
+            background: rgba(102, 126, 234, 0.2);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            transition: all 0.2s;
+        }
+
+        .play-audio-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+        }
+
+        .show-more-btn {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 5px 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+
+        .show-more-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .save-speakers-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            padding: 10px 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 20px auto 0;
+        }
+
+        .save-speakers-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .edit-speakers-btn {
+            background: rgba(102, 126, 234, 0.2);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .edit-speakers-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+        }
+
+        /* 音频播放器样式 */
+        .audio-player {
+            width: 100%;
+            height: 30px;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -768,6 +922,9 @@
                         <div class="form-group">
                             <label for="transcribeTextarea">Recognition Result (editable):</label>
                             <textarea id="transcribeTextarea" name="transcript" style="min-height:120px;"></textarea>
+                            <button type="button" id="editSpeakersBtn" class="edit-speakers-btn">
+                                <span>👤</span> Edit Speakers
+                            </button>
                         </div>
 
                         <div class="form-group">
@@ -842,6 +999,21 @@
         </div>
     </div>
 </div>
+
+<!-- 说话人编辑弹窗 -->
+<div id="speakerModal" class="speaker-modal">
+    <div class="speaker-modal-content">
+        <div class="modal-header">
+            <h2>Edit Speakers</h2>
+            <span class="close-modal" id="closeSpeakerModal">&times;</span>
+        </div>
+        <div id="speakersList">
+            <!-- 说话人项将通过JavaScript动态添加 -->
+        </div>
+        <button id="saveSpeakersBtn" class="save-speakers-btn">Save Changes</button>
+    </div>
+</div>
+
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
     // 全局变量，用于跟踪当前时间格式
@@ -1829,6 +2001,365 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // 初始化聊天功能
         initChat();
+    });
+
+    // 说话人编辑功能
+    document.addEventListener('DOMContentLoaded', function() {
+        // 说话人编辑按钮和弹窗元素
+        const editSpeakersBtn = document.getElementById('editSpeakersBtn');
+        const speakerModal = document.getElementById('speakerModal');
+        const closeSpeakerModal = document.getElementById('closeSpeakerModal');
+        const saveSpeakersBtn = document.getElementById('saveSpeakersBtn');
+        const speakersList = document.getElementById('speakersList');
+
+        // 存储说话人数据
+        let speakersData = {};
+        // 存储音频播放器
+        let audioPlayers = {};
+
+        // 解析转录文本中的说话人信息
+        function parseSpeakersFromTranscript(transcript) {
+            const lines = transcript.split('\n');
+            const speakers = {};
+
+            lines.forEach(line => {
+                // 匹配格式: [00:00:00.000 --> 00:00:06.794] [SPEAKER_01] 发言内容
+                const match = line.match(/\[(.*?)] \[(.*?)] (.*)/);
+                if (match) {
+                    const timeRange = match[1];
+                    const speakerId = match[2];
+                    const utterance = match[3];
+
+                    if (!speakers[speakerId]) {
+                        speakers[speakerId] = {
+                            name: '', // 初始为空，等待用户命名
+                            utterances: []
+                        };
+                    }
+
+                    // 解析时间范围
+                    const timeMatch = timeRange.match(/(\d+:\d+:\d+\.\d+) --> (\d+:\d+:\d+\.\d+)/);
+                    if (timeMatch) {
+                        const startTime = timeMatch[1];
+                        const endTime = timeMatch[2];
+
+                        speakers[speakerId].utterances.push({
+                            startTime: startTime,
+                            endTime: endTime,
+                            text: utterance,
+                            timeRange: timeRange
+                        });
+                    }
+                }
+            });
+
+            return speakers;
+        }
+
+        // 打开说话人编辑弹窗
+        function openSpeakerModal() {
+            const transcript = document.getElementById('transcribeTextarea').value;
+            speakersData = parseSpeakersFromTranscript(transcript);
+
+            // 清空现有内容
+            speakersList.innerHTML = '';
+
+            // 为每个说话人创建一个编辑部分
+            Object.keys(speakersData).forEach(speakerId => {
+                const speaker = speakersData[speakerId];
+
+                // 创建说话人项
+                const speakerItem = document.createElement('div');
+                speakerItem.className = 'speaker-item';
+                speakerItem.dataset.speakerId = speakerId;
+
+                // 说话人标题和名称输入
+                const speakerHeader = document.createElement('div');
+                speakerHeader.className = 'speaker-header';
+
+                const speakerTitle = document.createElement('h3');
+                speakerTitle.textContent = speakerId;
+
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.className = 'speaker-name-input';
+                nameInput.placeholder = '输入说话人姓名';
+                nameInput.value = speaker.name || '';
+                nameInput.dataset.speakerId = speakerId;
+
+                speakerHeader.appendChild(speakerTitle);
+                speakerHeader.appendChild(nameInput);
+                speakerItem.appendChild(speakerHeader);
+
+                // 添加前三句话
+                const utterances = speaker.utterances;
+                const initialUtterances = utterances.slice(0, 3);
+                const remainingUtterances = utterances.slice(3);
+
+                // 初始话语容器
+                const initialContainer = document.createElement('div');
+                initialContainer.className = 'initial-utterances';
+                speakerItem.appendChild(initialContainer);
+
+                // 添加初始显示的话语
+                initialUtterances.forEach(utterance => {
+                    const utteranceItem = createUtteranceItem(utterance, speakerId);
+                    initialContainer.appendChild(utteranceItem);
+                });
+
+                // 如果有更多话语，添加"显示更多"按钮和隐藏的容器
+                if (remainingUtterances.length > 0) {
+                    // 更多话语的容器
+                    const moreContainer = document.createElement('div');
+                    moreContainer.className = 'more-utterances';
+                    moreContainer.style.display = 'none';
+                    speakerItem.appendChild(moreContainer);
+
+                    // 添加剩余话语
+                    remainingUtterances.forEach(utterance => {
+                        const utteranceItem = createUtteranceItem(utterance, speakerId);
+                        moreContainer.appendChild(utteranceItem);
+                    });
+
+                    // 添加"显示更多"按钮
+                    const showMoreBtn = document.createElement('button');
+                    showMoreBtn.className = 'show-more-btn';
+                    showMoreBtn.textContent = `显示更多 (${remainingUtterances.length})`;
+                    showMoreBtn.dataset.expanded = 'false';
+                    showMoreBtn.addEventListener('click', function() {
+                        const expanded = this.dataset.expanded === 'true';
+                        moreContainer.style.display = expanded ? 'none' : 'block';
+                        this.textContent = expanded ?
+                            `显示更多 (${remainingUtterances.length})` :
+                            '收起';
+                        this.dataset.expanded = expanded ? 'false' : 'true';
+                    });
+                    speakerItem.appendChild(showMoreBtn);
+                }
+
+                speakersList.appendChild(speakerItem);
+            });
+
+            speakerModal.style.display = 'block';
+        }
+
+        // 创建话语项
+        function createUtteranceItem(utterance, speakerId) {
+            const utteranceItem = document.createElement('div');
+            utteranceItem.className = 'utterance-item';
+
+            const timeElement = document.createElement('div');
+            timeElement.className = 'utterance-time';
+            timeElement.textContent = utterance.timeRange;
+
+            const textElement = document.createElement('div');
+            textElement.className = 'utterance-text';
+            textElement.textContent = utterance.text;
+
+            // 添加播放按钮
+            const playButton = document.createElement('button');
+            playButton.className = 'play-audio-btn';
+            playButton.innerHTML = '▶';
+            playButton.dataset.startTime = utterance.startTime;
+            playButton.dataset.endTime = utterance.endTime;
+            playButton.dataset.speakerId = speakerId;
+            playButton.title = '播放此片段';
+            playButton.addEventListener('click', function() {
+                playAudioSegment(this);
+            });
+
+            utteranceItem.appendChild(timeElement);
+            utteranceItem.appendChild(textElement);
+            utteranceItem.appendChild(playButton);
+
+            return utteranceItem;
+        }
+
+        // 播放音频片段
+        function playAudioSegment(button) {
+            const startTime = button.dataset.startTime;
+            const endTime = button.dataset.endTime;
+            const speakerId = button.dataset.speakerId;
+
+            // 获取当前表单数据以构建音频URL
+            const form = document.getElementById('workflowForm');
+            const startTimeInput = form.querySelector('input[name="start_time"]').value;
+            const endTimeInput = form.querySelector('input[name="end_time"]').value;
+            const folderPath = document.getElementById('workflowFolderPath').value;
+
+            // 转换时间为秒数，用于定位音频
+            const startSeconds = timeToSeconds(startTime);
+            const endSeconds = timeToSeconds(endTime);
+
+            // 构造唯一ID
+            const playerId = `player-${speakerId}-${startSeconds}-${endSeconds}`;
+
+            // 检查是否已有播放器
+            const parentElement = button.parentElement;
+            let audioPlayer = parentElement.querySelector('.audio-player');
+
+            if (audioPlayer) {
+                // 已有播放器，切换显示/隐藏
+                if (audioPlayer.style.display === 'none') {
+                    audioPlayer.style.display = 'block';
+
+                    // 如果已经加载过，直接播放
+                    if (audioPlayers[playerId]) {
+                        audioPlayers[playerId].play();
+                    }
+                } else {
+                    audioPlayer.style.display = 'none';
+
+                    // 暂停播放
+                    if (audioPlayers[playerId]) {
+                        audioPlayers[playerId].pause();
+                    }
+                }
+                return;
+            }
+
+            // 创建新的音频播放器
+            audioPlayer = document.createElement('audio');
+            audioPlayer.className = 'audio-player';
+            audioPlayer.controls = true;
+            audioPlayer.id = playerId;
+            parentElement.appendChild(audioPlayer);
+
+            // 构建获取音频片段的URL
+            const formData = new FormData();
+            formData.set('start_time', isUTC ? startTimeInput : toUTCString(startTimeInput));
+            formData.set('end_time', isUTC ? endTimeInput : toUTCString(endTimeInput));
+            if (folderPath) {
+                formData.set('folder_path', folderPath);
+            }
+            formData.set('segment_start', startSeconds.toString());
+            formData.set('segment_end', endSeconds.toString());
+
+            // 显示加载状态
+            button.innerHTML = '⏳';
+            button.disabled = true;
+
+            // 请求音频片段
+            fetch('/download_segment', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                audioPlayer.src = url;
+                audioPlayer.onended = () => {
+                    // 播放结束后，恢复播放按钮
+                    button.innerHTML = '▶';
+                };
+                audioPlayer.onplay = () => {
+                    button.innerHTML = '⏸';
+                };
+                audioPlayer.onpause = () => {
+                    button.innerHTML = '▶';
+                };
+
+                // 存储播放器引用
+                audioPlayers[playerId] = audioPlayer;
+
+                // 启用按钮
+                button.disabled = false;
+
+                // 自动播放
+                audioPlayer.play();
+            })
+            .catch(error => {
+                console.error('Error fetching audio segment:', error);
+                button.innerHTML = '❌';
+                button.disabled = false;
+
+                // 移除播放器
+                audioPlayer.remove();
+            });
+        }
+
+        // 将时间字符串转换为秒数
+        function timeToSeconds(timeStr) {
+            const parts = timeStr.split(':');
+            const seconds = parts.length > 2 ?
+                parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]) :
+                parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+            return seconds;
+        }
+
+        // 保存说话人名称并更新转录文本
+        function saveSpeakerNames() {
+            const nameInputs = document.querySelectorAll('.speaker-name-input');
+            const transcript = document.getElementById('transcribeTextarea');
+            let updatedText = transcript.value;
+
+            // 收集所有说话人名称
+            nameInputs.forEach(input => {
+                const speakerId = input.dataset.speakerId;
+                const speakerName = input.value.trim();
+
+                if (speakerName) {
+                    // 更新数据
+                    speakersData[speakerId].name = speakerName;
+
+                    // 更新转录文本
+                    const regex = new RegExp(`\\[${speakerId}\\]`, 'g');
+                    updatedText = updatedText.replace(regex, `[${speakerName}]`);
+                }
+            });
+
+            // 更新转录文本
+            transcript.value = updatedText;
+
+            // 关闭弹窗
+            speakerModal.style.display = 'none';
+        }
+
+        // 初始化事件监听
+        if (editSpeakersBtn) {
+            editSpeakersBtn.addEventListener('click', openSpeakerModal);
+        }
+
+        if (closeSpeakerModal) {
+            closeSpeakerModal.addEventListener('click', function() {
+                speakerModal.style.display = 'none';
+            });
+        }
+
+        if (saveSpeakersBtn) {
+            saveSpeakersBtn.addEventListener('click', saveSpeakerNames);
+        }
+
+        // 点击弹窗外部关闭弹窗
+        window.addEventListener('click', function(event) {
+            if (event.target === speakerModal) {
+                speakerModal.style.display = 'none';
+            }
+        });
+
+        // 修改转录完成处理，添加编辑说话人按钮的显示
+        const originalSocketHandler = window.onload;
+        window.onload = function() {
+            if (typeof originalSocketHandler === 'function') {
+                originalSocketHandler();
+            }
+
+            // 在转录完成时显示编辑说话人按钮
+            const socket = io();
+            socket.on('workflow_progress', function(msg) {
+                if (msg && msg.step === 'done') {
+                    // 转录完成后，确保编辑说话人按钮可见
+                    if (document.getElementById('editSpeakersBtn')) {
+                        document.getElementById('editSpeakersBtn').style.display = 'inline-block';
+                    }
+                }
+            });
+        };
     });
 </script>
 </body>
