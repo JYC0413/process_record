@@ -1128,8 +1128,9 @@ def assign_speakers_to_transcript(transcript, diarization):
 
     # 创建新的编号系统，从01开始
     speaker_mapping = {}
-    for i, speaker in enumerate(sorted(original_speakers)):
-        speaker_mapping[speaker] = f"SPEAKER_{i + 1:02d}"
+    for num, speaker in enumerate(sorted(original_speakers)):
+        speaker_mapping[speaker] = f"SPEAKER_{num + 1:02d}"
+        print(f"Mapping speaker '{speaker}' to '{speaker_mapping[speaker]}'")
 
     # 解析转录文本中的时间戳
     transcript_lines = []
@@ -1154,22 +1155,23 @@ def assign_speakers_to_transcript(transcript, diarization):
         # 收集该时间段内的所有说话人片段
         speaker_segments = []
         for turn, _, speaker in diarization.itertracks(yield_label=True):
+            print(f"Turn: {turn.start:.2f}-{turn.end:.2f}, Speaker: {speaker}")
             # 检查说话人分区段与转录段是否有重叠
             if max(turn.start, start_seconds) < min(turn.end, end_seconds):
                 # 计算重叠部分的起止时间
                 overlap_start = max(turn.start, start_seconds)
                 overlap_end = min(turn.end, end_seconds)
                 # 使用映射后的说话人ID
-                mapped_speaker = speaker_mapping.get(speaker, speaker)
+                mapped_speaker = speaker_mapping.get(speaker, "SPEAKER_00")
+                print(f"mapped_speaker: {mapped_speaker}, overlap: {overlap_start:.2f}-{overlap_end:.2f}")
                 speaker_segments.append((overlap_start, overlap_end, mapped_speaker))
 
         # 对说话人片段按时间排序
         speaker_segments.sort()
 
-        # 如果没有找到说话人或只有一个说话人，直接分配
-        if len(speaker_segments) <= 1:
-            speaker = "SPEAKER_00" if not speaker_segments else speaker_segments[0][2]
-            new_line = f"[{start_time} --> {end_time}] [{speaker}] {content}"
+        # 如果没有找到说话人，使用SPEAKER_00
+        if not speaker_segments:
+            new_line = f"[{start_time} --> {end_time}] [SPEAKER_00] {content}"
             transcript_lines.append(new_line)
             continue
 
@@ -1220,7 +1222,7 @@ def split_transcript_by_speakers(text, start_time, end_time, speaker_segments):
 
     # 如果没有找到分割点，使用主要说话人
     if not split_points:
-        main_speaker = find_main_speaker_from_segments(speaker_segments, start_time, end_time)
+        main_speaker = find_main_speaker_from_segments(speaker_segments, last_time, end_time)
         return [(start_time, end_time, main_speaker, text)]
 
     # 找到最适合的分割点
@@ -1284,3 +1286,4 @@ def find_main_speaker_from_segments(speaker_segments, start_time, end_time):
 
 if __name__ == "__main__":
     socketio.run(app, debug=True)
+
