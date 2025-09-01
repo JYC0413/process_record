@@ -1925,13 +1925,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                 } else {
                     // 处理错误情况
-                    addMessage('ai', '抱歉，我无法处理您的请求。');
+                    addMessage('ai', 'Sorry, I’m unable to process your request.');
                 }
             })
             .catch(error => {
                 console.error('聊天请求错误:', error);
                 removeTypingIndicator();
-                addMessage('ai', '发生错误，请稍后再试。');
+                addMessage('ai', 'An error occurred. Please try again later.');
             })
             .finally(() => {
                 // 恢复发送按钮和输入框
@@ -2083,7 +2083,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const nameInput = document.createElement('input');
                 nameInput.type = 'text';
                 nameInput.className = 'speaker-name-input';
-                nameInput.placeholder = '输入说话人姓名';
+                nameInput.placeholder = 'Enter speaker name';
                 nameInput.value = speaker.name || '';
                 nameInput.dataset.speakerId = speakerId;
 
@@ -2124,14 +2124,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     // 添加"显示更多"按钮
                     const showMoreBtn = document.createElement('button');
                     showMoreBtn.className = 'show-more-btn';
-                    showMoreBtn.textContent = `显示更多 (${remainingUtterances.length})`;
+                    showMoreBtn.textContent = `Show more (${remainingUtterances.length})`;
                     showMoreBtn.dataset.expanded = 'false';
                     showMoreBtn.addEventListener('click', function() {
                         const expanded = this.dataset.expanded === 'true';
                         moreContainer.style.display = expanded ? 'none' : 'block';
                         this.textContent = expanded ?
-                            `显示更多 (${remainingUtterances.length})` :
-                            '收起';
+                            `Show more (${remainingUtterances.length})` :
+                            'Collapse';
                         this.dataset.expanded = expanded ? 'false' : 'true';
                     });
                     speakerItem.appendChild(showMoreBtn);
@@ -2163,7 +2163,7 @@ document.addEventListener('DOMContentLoaded', function () {
             playButton.dataset.startTime = utterance.startTime;
             playButton.dataset.endTime = utterance.endTime;
             playButton.dataset.speakerId = speakerId;
-            playButton.title = '播放此片段';
+            playButton.title = 'Play this segment';
             playButton.addEventListener('click', function() {
                 playAudioSegment(this);
             });

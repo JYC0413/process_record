@@ -501,11 +501,11 @@ def transcribe():
     task_id = str(uuid.uuid4())
 
     def transcribe_task(task_id, files, selected_language):
-        socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'start', 'message': '开始处理音频'})
+        socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'start', 'message': 'Starting audio processing'})
 
         merged_audio_group = merge_wav_files_grouped(files)
         socketio.emit('workflow_progress',
-                      {'task_id': task_id, 'step': 'merge', 'message': f'音频分组完成，共{len(merged_audio_group)}组'})
+                      {'task_id': task_id, 'step': 'merge', 'message': f'Audio grouping completed, with a total of {len(merged_audio_group)} groups'})
 
         # 创建一个完整的合并音频用于说话人分区
         full_audio = None
@@ -522,7 +522,7 @@ def transcribe():
             full_audio_path = tmpfile.name
 
         socketio.emit('workflow_progress',
-                      {'task_id': task_id, 'step': 'diarization_prepare', 'message': '准备进行说话人分区'})
+                      {'task_id': task_id, 'step': 'diarization_prepare', 'message': 'Preparing for speaker diarization'})
 
         transcripts = ""
         total_content = ""
@@ -532,13 +532,13 @@ def transcribe():
         if selected_language != "auto":
             standard_code = selected_language
             socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'lang_select',
-                                                'message': f'使用用户选择的语言: {standard_code}'})
+                                                'message': f'Using the user-selected language: {standard_code}'})
 
         # 首先完成所有音频段的转录，不进行说话人分区
         with httpx.Client() as client:
             for i, audio in enumerate(merged_audio_group):
                 socketio.emit('workflow_progress',
-                              {'task_id': task_id, 'step': f'transcribe_{i + 1}', 'message': f'正在转录第{i + 1}组'})
+                              {'task_id': task_id, 'step': f'transcribe_{i + 1}', 'message': f'Transcribing group {i + 1}'})
                 buf = io.BytesIO()
                 audio.export(buf, format="wav")
                 buf.seek(0)
@@ -562,7 +562,7 @@ def transcribe():
                         if torch.max(confidence_scores).item() < 0.5:
                             standard_code = "en"
                         socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'lang_detect',
-                                                            'message': f'检测到语言: {standard_code}, 置信度: {torch.max(confidence_scores).item():.4f}'})
+                                                            'message': f'Detected language: {standard_code}, confidence: {torch.max(confidence_scores).item():.4f}'})
 
                     # 使用确定的语言代码进行转录
                     if standard_code:
@@ -615,13 +615,13 @@ def transcribe():
                                 socketio.emit('workflow_progress', {
                                     'task_id': task_id,
                                     'step': f'transcribe_{i + 1}_retry',
-                                    'message': f'第{attempt}/{max_retries}次尝试失败，状态码 {response.status_code}。重试中...'
+                                    'message': f'Attempt {attempt}/{max_retries} failed with status code {response.status_code}. Retrying...'
                                 })
                         except Exception as e:
                             socketio.emit('workflow_progress', {
                                 'task_id': task_id,
                                 'step': f'transcribe_{i + 1}_retry',
-                                'message': f'第{attempt}/{max_retries}次尝试失败: {str(e)}。重试中...'
+                                'message': f'Attempt {attempt}/{max_retries} failed: {str(e)}. Retrying...'
                             })
 
                         # 如果不是最后一次尝试，则等待后重试
@@ -666,7 +666,7 @@ def transcribe():
                         else:
                             transcripts += "\n" + transcript["text"]
                         socketio.emit('workflow_progress', {'task_id': task_id, 'step': f'transcribe_{i + 1}_done',
-                                                            'message': f'第{i + 1}组转录完成'})
+                                                            'message': f'Group {i + 1} transcription completed'})
 
                     else:
                         # 处理转录失败的情况 - 添加空的时间段标记
@@ -687,7 +687,7 @@ def transcribe():
                         socketio.emit('workflow_progress', {
                             'task_id': task_id,
                             'step': f'transcribe_{i + 1}_skip',
-                            'message': f'第{i + 1}组转录失败，尝试{max_retries}次后放弃。添加空段落并继续。'
+                            'message': f'Transcription for group {i + 1} failed. After {max_retries} attempts, it has been abandoned. An empty segment will be added, and processing will continue'
                         })
 
                 # 删除临时文件
@@ -697,7 +697,7 @@ def transcribe():
                     pass
 
         # 所有转录完成后，对整个音频进行一次性说话人分区
-        socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'diarization', 'message': '正在进行说话人分区'})
+        socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'diarization', 'message': 'Performing speaker diarization'})
 
         try:
             # 处理说话人分区
@@ -706,16 +706,16 @@ def transcribe():
                 # 将说话人信息添加到完整的转录文本中
                 transcripts = assign_speakers_to_transcript(transcripts, diarization)
                 socketio.emit('workflow_progress',
-                              {'task_id': task_id, 'step': 'diarization_done', 'message': '说话人分区完成'})
+                              {'task_id': task_id, 'step': 'diarization_done', 'message': 'Speaker diarization completed'})
                 socketio.emit('workflow_progress',
                               {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed',
                                'result': transcripts})
             else:
                 socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'diarization_error',
-                                                    'message': '说话人分区失败，将继续处理但不包含说话人信息'})
+                                                    'message': 'Speaker diarization failed. Processing will continue without speaker information'})
         except Exception as e:
             socketio.emit('workflow_progress',
-                          {'task_id': task_id, 'step': 'diarization_error', 'message': f'说话人分区出错: {str(e)}'})
+                          {'task_id': task_id, 'step': 'diarization_error', 'message': f'Speaker diarization error: {str(e)}'})
         finally:
             # 删除临时文件
             try:
@@ -910,7 +910,7 @@ def chat():
                     break
 
         if not workflow_config:
-            return jsonify({"error": "找不到适合的API配置"}), 400
+            return jsonify({"error": "No suitable API configuration found"}), 400
 
         # 提取API配置
         api_url = workflow_config.get("api_endpoint", "")
@@ -918,17 +918,17 @@ def chat():
         api_key = workflow_config.get("api_key")
 
         if not api_url:
-            return jsonify({"error": "未配置API端点"}), 400
+            return jsonify({"error": "API endpoint not configured"}), 400
 
         # 构建系统消息，提供上下文
-        system_message = "你是一个AI助手。以下是一段会议内容的转录和分析结果，请基于这些信息回答用户的问题。"
+        system_message = "You are an AI assistant. The following is a transcript and analysis of a meeting; please answer the user's questions based on this information."
 
         # 如果有转录和处理结果，添加到系统消息中
         context = ""
         if transcript:
-            context += f"\n\n会议转录:\n{transcript}"
+            context += f"\n\nMeeting transcript:\n{transcript}"
         if workflow_result:
-            context += f"\n\n分析结果:\n{workflow_result}"
+            context += f"\n\nAnalysis results:\n{workflow_result}"
 
         if context:
             system_message += context
@@ -970,7 +970,7 @@ def chat():
             # 检查响应
             if response.status_code != 200:
                 print(f"API返回错误: {response.status_code}, {response.text}")
-                return jsonify({"error": f"API返回错误: {response.status_code}"}), 500
+                return jsonify({"error": f"API returned an error: {response.status_code}"}), 500
 
             try:
                 result = response.json()
@@ -994,11 +994,11 @@ def chat():
                 return jsonify({"response": ai_response})
             except Exception as e:
                 print(f"处理API响应时出错: {str(e)}")
-                return jsonify({"error": f"处理API响应时出错: {str(e)}"}), 500
+                return jsonify({"error": f"Error occurred while processing the API response: {str(e)}"}), 500
 
     except Exception as e:
         print(f"聊天处理出错: {str(e)}")
-        return jsonify({"error": f"处理请求时出错: {str(e)}"}), 500
+        return jsonify({"error": f"Error occurred while processing the request: {str(e)}"}), 500
 
 
 # 保留原接口用于向后兼容，但功能简化
