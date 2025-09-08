@@ -133,7 +133,7 @@ def run_pyannote_pipeline(folder_abs: str):
         # 输出结果到文本文件
         result_txt = os.path.join(folder_abs, "diarization.txt")
         with open(result_txt, "w", encoding="utf-8") as f:
-            result = assign_speakers_to_transcript("\n".join(combined_subtitles), diarization)
+            result = assign_speakers_to_transcript("".join(combined_subtitles), diarization)
             f.write(result)
         print(f"✅ 说话人分离结果已保存: {result_txt}")
 
