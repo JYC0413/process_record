@@ -103,10 +103,11 @@ def run_pyannote_pipeline(folder_abs: str):
                     new_end_str = ms_to_time(new_end_ms)
 
                     # 构建新的字幕行
-                    new_subtitle = f"[{new_start_str} --> {new_end_str}]{content_part}\n"
+                    new_subtitle = f"[{new_start_str} --> {new_end_str}]{content_part}"
                     combined_subtitles.append(new_subtitle)
                 else:
-                    combined_subtitles.append(subtitle if subtitle.endswith('\n') else subtitle + '\n')
+                    combined_subtitles.append(subtitle)
+            combined_subtitles.append("\n") # 每个文件的字幕后加个空行
 
         # 更新累积的音频长度
         accumulated_duration += len(audio)
@@ -132,7 +133,7 @@ def run_pyannote_pipeline(folder_abs: str):
         # 输出结果到文本文件
         result_txt = os.path.join(folder_abs, "diarization.txt")
         with open(result_txt, "w", encoding="utf-8") as f:
-            result = assign_speakers_to_transcript(combined_subtitles, diarization)
+            result = assign_speakers_to_transcript("\n".join(combined_subtitles), diarization)
             f.write(result)
         print(f"✅ 说话人分离结果已保存: {result_txt}")
 
@@ -232,6 +233,7 @@ def whisper_transcribe(file_path):
         if "text" in transcript:
             text_content = transcript["text"]
             txt_path = os.path.splitext(file_path)[0] + ".txt"
+            print(f"✅ 转录成功，保存到: {txt_path}")
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write(text_content)
 
@@ -245,6 +247,7 @@ def handle_new_file(file_path: str):
 
     # 需求1：如果你还需要对每个新文件做 whisper，可在稳定后执行
     if is_file_stable(file_path):
+        print(f"✅ 文件已稳定，开始单文件处理: {file_path}")
         whisper_transcribe(file_path)  # 你自己的逻辑
     else:
         print(f"⚠️  文件未稳定，跳过单文件处理: {file_path}")
