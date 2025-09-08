@@ -10,7 +10,7 @@ from pyannote.audio import Pipeline
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from webserver import get_whisper_api_config
+from webserver import get_whisper_api_config, assign_speakers_to_transcript
 
 load_dotenv()
 
@@ -103,10 +103,10 @@ def run_pyannote_pipeline(folder_abs: str):
                     new_end_str = ms_to_time(new_end_ms)
 
                     # 构建新的字幕行
-                    new_subtitle = f"[{new_start_str} --> {new_end_str}]{content_part}"
+                    new_subtitle = f"[{new_start_str} --> {new_end_str}]{content_part}\n"
                     combined_subtitles.append(new_subtitle)
                 else:
-                    combined_subtitles.append(subtitle)
+                    combined_subtitles.append(subtitle if subtitle.endswith('\n') else subtitle + '\n')
 
         # 更新累积的音频长度
         accumulated_duration += len(audio)
@@ -126,15 +126,15 @@ def run_pyannote_pipeline(folder_abs: str):
             f.writelines(combined_subtitles)
         print(f"✅ 合并字幕完成: {combined_subtitle_path}")
 
-    # apply pretrained pipeline
-    diarization = pipeline(combined_path)
+        # apply pretrained pipeline
+        diarization = pipeline(combined_path)
 
-    # 输出结果到文本文件
-    result_txt = os.path.join(folder_abs, "diarization.txt")
-    with open(result_txt, "w", encoding="utf-8") as f:
-        for turn, _, speaker in diarization.itertracks(yield_label=True):
-            f.write(f"start={turn.start:.2f}s stop={turn.end:.2f}s speaker_{speaker}\n")
-    print(f"✅ 说话人分离结果已保存: {result_txt}")
+        # 输出结果到文本文件
+        result_txt = os.path.join(folder_abs, "diarization.txt")
+        with open(result_txt, "w", encoding="utf-8") as f:
+            result = assign_speakers_to_transcript(combined_subtitle_path, diarization)
+            f.write(result)
+        print(f"✅ 说话人分离结果已保存: {result_txt}")
 
 def on_folder_idle(folder_abs: str):
     """某个子文件夹5分钟没有新的 recording_*.wav 创建时触发"""
