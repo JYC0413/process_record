@@ -191,6 +191,8 @@ def whisper_transcribe(file_path):
     if whisper_prompt:
         data['prompt'] = whisper_prompt
 
+    data['language'] = "auto"
+
     # 添加重试机制，最多尝试3次
     max_retries = 3
     retry_delay = 2  # 初始延迟2秒
