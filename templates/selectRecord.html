@@ -1319,6 +1319,30 @@
 
         socket.on('connect', function() {
             console.log('Socket connected');
+            console.log('starting transcription request');
+            fetch('/transcribe', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('returned data:', data);
+                    if (!data || !data.task_id) {
+                        if (data && data.message) {
+                            alert("Failed to start transcription: " + data.message);
+                        } else {
+                            alert("Failed to start transcription: Unknown error");
+                        }
+                        enableButton(btn);
+                        document.getElementById('workflowProgressBar').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Transcription failed: ' + error);
+                    document.getElementById('workflowProgressBar').style.display = 'none';
+                    enableButton(btn);
+                });
         });
 
         socket.on('workflow_progress', function (msg) {
@@ -1338,31 +1362,6 @@
                 enableButton(btn);
             }
         });
-
-        console.log('starting transcription request');
-        fetch('/transcribe', {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log('returned data:', data);
-                if (!data || !data.task_id) {
-                    if (data && data.message) {
-                        alert("Failed to start transcription: " + data.message);
-                    } else {
-                        alert("Failed to start transcription: Unknown error");
-                    }
-                    enableButton(btn);
-                    document.getElementById('workflowProgressBar').style.display = 'none';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Transcription failed: ' + error);
-                document.getElementById('workflowProgressBar').style.display = 'none';
-                enableButton(btn);
-            });
     }
 
     // 开始音频处理工作流 - 使用新的/process_workflow接口
