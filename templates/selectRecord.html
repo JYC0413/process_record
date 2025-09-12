@@ -1317,6 +1317,24 @@
         let steps = [];
         let currentStep = 0;
 
+        socket.on('workflow_progress', function (msg) {
+            if (!msg || msg.task_id !== taskId) return;
+
+            steps.push(msg.message);
+            currentStep++;
+            updateProgressBar(steps, currentStep);
+
+            if (msg.step === 'done') {
+                // 转录完成，显示结果
+                document.getElementById('transcribeTextarea').value = msg.result || '';
+                document.getElementById('transcribeResultSection').style.display = '';
+                document.getElementById('transcribeStatusSection').style.display = 'none';
+                document.getElementById('workflowProgressBar').style.display = 'none';
+                socket.disconnect();
+                enableButton(btn);
+            }
+        });
+
         fetch('/transcribe', {
             method: 'POST',
             body: formData
@@ -1331,26 +1349,7 @@
                     }
                     enableButton(btn);
                     document.getElementById('workflowProgressBar').style.display = 'none';
-                    return;
                 }
-
-                socket.on('workflow_progress', function (msg) {
-                    if (!msg || msg.task_id !== taskId) return;
-
-                    steps.push(msg.message);
-                    currentStep++;
-                    updateProgressBar(steps, currentStep);
-
-                    if (msg.step === 'done') {
-                        // 转录完成，显示结果
-                        document.getElementById('transcribeTextarea').value = msg.result || '';
-                        document.getElementById('transcribeResultSection').style.display = '';
-                        document.getElementById('transcribeStatusSection').style.display = 'none';
-                        document.getElementById('workflowProgressBar').style.display = 'none';
-                        socket.disconnect();
-                        enableButton(btn);
-                    }
-                });
             })
             .catch(error => {
                 console.error('Error:', error);
