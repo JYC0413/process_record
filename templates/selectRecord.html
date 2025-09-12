@@ -1317,6 +1317,10 @@
         let steps = [];
         let currentStep = 0;
 
+        socket.on('connect', function() {
+            console.log('Socket connected');
+        });
+
         socket.on('workflow_progress', function (msg) {
             if (!msg || msg.task_id !== taskId) return;
 
