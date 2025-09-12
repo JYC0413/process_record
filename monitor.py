@@ -6,11 +6,10 @@ import httpx
 import threading
 from pydub import AudioSegment
 from dotenv import load_dotenv
-from pyannote.audio import Pipeline
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from webserver import get_whisper_api_config, assign_speakers_to_transcript
+from webserver import get_whisper_api_config, assign_speakers_to_transcript, process_diarization
 
 load_dotenv()
 
@@ -50,13 +49,6 @@ def ms_to_time(ms):
     return f"{h:02d}:{m:02d}:{s:02d}.{ms:03d}"
 
 def run_pyannote_pipeline(folder_abs: str):
-    pipeline = Pipeline.from_pretrained(
-        "pyannote/speaker-diarization-3.1",
-        use_auth_token=os.getenv("HUGGINGFACE_TOKEN")
-    )
-    # send pipeline to GPU (when available)
-    pipeline.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
-
     # 遍历该目录下所有 recording_*.wav 文件，按时间排序后合并
     wav_files = [f for f in os.listdir(folder_abs) if is_target_wav(f)]
     wav_files.sort()  # 按文件名排序，假设文件名中包含时间戳
@@ -128,7 +120,7 @@ def run_pyannote_pipeline(folder_abs: str):
         print(f"✅ 合并字幕完成: {combined_subtitle_path}")
 
         # apply pretrained pipeline
-        diarization = pipeline(combined_path)
+        diarization = process_diarization(combined_path)
 
         # 输出结果到文本文件
         result_txt = os.path.join(folder_abs, "diarization.txt")

@@ -21,6 +21,15 @@ from speechbrain.inference import EncoderClassifier
 # 添加 pyannote.audio 导入
 from pyannote.audio import Pipeline
 
+from typing import NamedTuple
+
+
+class TransObj(NamedTuple):
+    start: float
+    end: float
+    value: str
+
+
 load_dotenv()
 
 # 加载工作流配置文件
@@ -117,6 +126,7 @@ app = Flask(__name__)
 socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")  # 改为threading，兼容requests/httpx
 
 AUDIO_DIR = os.getenv("AUDIO_DIR")
+
 
 def parse_timestamp_from_filename(filename):
     try:
@@ -501,11 +511,13 @@ def transcribe():
     task_id = str(uuid.uuid4())
 
     def transcribe_task(task_id, files, selected_language):
-        socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'start', 'message': 'Starting audio processing'})
+        socketio.emit('workflow_progress',
+                      {'task_id': task_id, 'step': 'start', 'message': 'Starting audio processing'})
 
         merged_audio_group = merge_wav_files_grouped(files)
         socketio.emit('workflow_progress',
-                      {'task_id': task_id, 'step': 'merge', 'message': f'Audio grouping completed, with a total of {len(merged_audio_group)} groups'})
+                      {'task_id': task_id, 'step': 'merge',
+                       'message': f'Audio grouping completed, with a total of {len(merged_audio_group)} groups'})
 
         # 创建一个完整的合并音频用于说话人分区
         full_audio = None
@@ -522,7 +534,8 @@ def transcribe():
             full_audio_path = tmpfile.name
 
         socketio.emit('workflow_progress',
-                      {'task_id': task_id, 'step': 'diarization_prepare', 'message': 'Preparing for speaker diarization'})
+                      {'task_id': task_id, 'step': 'diarization_prepare',
+                       'message': 'Preparing for speaker diarization'})
 
         transcripts = ""
         total_content = ""
@@ -538,7 +551,8 @@ def transcribe():
         with httpx.Client() as client:
             for i, audio in enumerate(merged_audio_group):
                 socketio.emit('workflow_progress',
-                              {'task_id': task_id, 'step': f'transcribe_{i + 1}', 'message': f'Transcribing group {i + 1}'})
+                              {'task_id': task_id, 'step': f'transcribe_{i + 1}',
+                               'message': f'Transcribing group {i + 1}'})
                 buf = io.BytesIO()
                 audio.export(buf, format="wav")
                 buf.seek(0)
@@ -697,7 +711,8 @@ def transcribe():
                     pass
 
         # 所有转录完成后，对整个音频进行一次性说话人分区
-        socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'diarization', 'message': 'Performing speaker diarization'})
+        socketio.emit('workflow_progress',
+                      {'task_id': task_id, 'step': 'diarization', 'message': 'Performing speaker diarization'})
 
         try:
             # 处理说话人分区
@@ -706,7 +721,8 @@ def transcribe():
                 # 将说话人信息添加到完整的转录文本中
                 transcripts = assign_speakers_to_transcript(transcripts, diarization)
                 socketio.emit('workflow_progress',
-                              {'task_id': task_id, 'step': 'diarization_done', 'message': 'Speaker diarization completed'})
+                              {'task_id': task_id, 'step': 'diarization_done',
+                               'message': 'Speaker diarization completed'})
                 socketio.emit('workflow_progress',
                               {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed',
                                'result': transcripts})
@@ -715,7 +731,8 @@ def transcribe():
                                                     'message': 'Speaker diarization failed. Processing will continue without speaker information'})
         except Exception as e:
             socketio.emit('workflow_progress',
-                          {'task_id': task_id, 'step': 'diarization_error', 'message': f'Speaker diarization error: {str(e)}'})
+                          {'task_id': task_id, 'step': 'diarization_error',
+                           'message': f'Speaker diarization error: {str(e)}'})
         finally:
             # 删除临时文件
             try:
@@ -1102,42 +1119,93 @@ def get_speaker_diarization():
     return speaker_diarization_pipeline
 
 
-def process_diarization(audio_path):
+def process_diarization(audio_path, speakers=0):
     """处理音频文件，返回说话人分区结果"""
     pipeline = get_speaker_diarization()
     if not pipeline:
         return None
 
     try:
-        diarization = pipeline(audio_path)
+        if speakers:
+            diarization = pipeline(audio_path, min_speakers=2, num_speakers=speakers)
+        else:
+            diarization = pipeline(audio_path, min_speakers=2)
         return diarization
     except Exception as e:
         print(f"说话人分区处理失败: {str(e)}")
         return None
 
 
-def assign_speakers_to_transcript(transcript, diarization):
-    """将说话人信息分配给转录文本，并根据说话人变化和文本内容智能分段"""
-    if not diarization:
-        return transcript
+def increment_speaker(s):
+    prefix, num_str = s.split('_')  # 拆开 "SPEAKER" 和数字部分
+    num = int(num_str) + 1  # 转成整数并加一
+    new_num_str = f"{num:02d}"  # 格式化成两位数，前面补0
+    return f"{prefix}_{new_num_str}"
 
-    # 创建说话人ID映射，将原始ID映射到新的编号系统
-    original_speakers = set()
-    for turn, _, speaker in diarization.itertracks(yield_label=True):
-        original_speakers.add(speaker)
 
-    # 创建新的编号系统，从01开始
-    speaker_mapping = {}
-    for num, speaker in enumerate(sorted(original_speakers)):
-        speaker_mapping[speaker] = f"SPEAKER_{num + 1:02d}"
-        print(f"Mapping speaker '{speaker}' to '{speaker_mapping[speaker]}'")
+def find_overlapping_b_intervals(trans_obj, speakers_list):
+    overlaps = []
 
-    # 解析转录文本中的时间戳
-    transcript_lines = []
+    for speaker_obj in speakers_list:
+        # 计算重叠部分
+        overlap_start = max(trans_obj.start, speaker_obj.start)
+        overlap_end = min(trans_obj.end, speaker_obj.end)
+
+        if overlap_start < overlap_end:
+            # 有重叠
+            overlap_duration = overlap_end - overlap_start
+            total_duration = trans_obj.end - trans_obj.start
+            overlap_ratio = overlap_duration / total_duration
+            overlaps.append((speaker_obj, overlap_ratio))
+
+    return overlaps
+
+
+def split_text_at_punctuation(text: str, split_ratio: float):
+    """在标点符号处分割文本，尽量接近指定的分割比例"""
+    # 定义标点符号模式：中文标点直接匹配，英文标点需要后跟空格或句尾
+    chinese_punctuations = r'[。！？；，]'
+    english_punctuations = r'[.!?;,](?=\s|$)'
+    # 合并两种匹配模式
+    punctuations = f"({chinese_punctuations}|{english_punctuations})"
+
+    # 找到所有标点符号的位置
+    matches = list(re.finditer(punctuations, text))
+
+    if not matches:
+        # 没有标点符号，按比例直接分割
+        split_pos = int(len(text) * split_ratio)
+        return text[:split_pos], text[split_pos:]
+
+    # 计算理想的分割位置
+    ideal_pos = len(text) * split_ratio
+
+    # 找到最接近理想位置的标点符号
+    best_match = min(matches, key=lambda m: abs(m.end() - ideal_pos))
+
+    return text[:best_match.end()], text[best_match.end():].strip()
+
+
+def trans_obj_add_speaker(trans_obj, speaker):
+    seg_start = trans_obj.start
+    seg_end = trans_obj.end
+    seg_content = trans_obj.value
+    seg_speaker = speaker
+    seg_start_time = f"{int(seg_start / 3600):02d}:{int((seg_start % 3600) / 60):02d}:{seg_start % 60:06.3f}"
+    seg_end_time = f"{int(seg_end / 3600):02d}:{int((seg_end % 3600) / 60):02d}:{seg_end % 60:06.3f}"
+
+    new_line = f"[{seg_start_time} --> {seg_end_time}] [{seg_speaker}] {seg_content}"
+    return new_line
+
+
+def process_intervals(transcript, speakers_list):
+    """处理区间匹配的主函数"""
+    result = []
+
     for line in transcript.split('\n'):
         match = re.search(r'\[(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})\]\s*(.*)', line)
         if not match:
-            transcript_lines.append(line)
+            print(f"无法成功匹配的行: {line}")
             continue
 
         start_time = match.group(1)
@@ -1151,139 +1219,130 @@ def assign_speakers_to_transcript(transcript, diarization):
         end_seconds = (int(end_time.split(':')[0]) * 3600 +
                        int(end_time.split(':')[1]) * 60 +
                        float(end_time.split(':')[2]))
+        trans_obj = TransObj(start_seconds, end_seconds, content)
+        overlaps = find_overlapping_b_intervals(trans_obj, speakers_list)
 
-        # 收集该时间段内的所有说话人片段
-        speaker_segments = []
-        for turn, _, speaker in diarization.itertracks(yield_label=True):
-            # print(f"Turn: {turn.start:.2f}-{turn.end:.2f}, Speaker: {speaker}")
-            # 检查说话人分区段与转录段是否有重叠
-            if max(turn.start, start_seconds) < min(turn.end, end_seconds):
-                # 计算重叠部分的起止时间
-                overlap_start = max(turn.start, start_seconds)
-                overlap_end = min(turn.end, end_seconds)
-                # 使用映射后的说话人ID
-                mapped_speaker = speaker_mapping.get(speaker, "SPEAKER_00")
-                # print(f"mapped_speaker: {mapped_speaker}, overlap: {overlap_start:.2f}-{overlap_end:.2f}")
-                speaker_segments.append((overlap_start, overlap_end, mapped_speaker))
+        if not overlaps:
+            # 情况六：没有任何重叠
+            result.append(trans_obj_add_speaker(trans_obj, "SPEAKER_00"))
 
-        # 对说话人片段按时间排序
-        speaker_segments.sort()
+        elif len(overlaps) == 1:
+            # 只与一个speaker区间有重叠
+            b_obj, overlap_ratio = overlaps[0]
+            result.append(trans_obj_add_speaker(trans_obj, b_obj.value))
 
-        # 如果没有找到说话人，使用SPEAKER_00
-        if not speaker_segments:
-            new_line = f"[{start_time} --> {end_time}] [SPEAKER_00] {content}"
-            transcript_lines.append(new_line)
-            continue
+        else:
+            # 与多个speaker区间有重叠
+            overlaps.sort(key=lambda x: x[1], reverse=True)
 
-        # 尝试根据说话人变化和文本内容分割该段
-        segments = split_transcript_by_speakers(content, start_seconds, end_seconds, speaker_segments)
+            if len(overlaps) == 2 and abs(overlaps[0][1] - overlaps[1][1]) < 0.3:
+                # 两个区间占比接近，考虑断成两句
+                text1, text2 = split_text_at_punctuation(trans_obj.value, overlaps[0][1])
 
-        # 将分割后的片段添加到转录结果中
-        for seg_start, seg_end, seg_speaker, seg_content in segments:
-            # 将秒转换回时间戳格式
-            seg_start_time = f"{int(seg_start / 3600):02d}:{int((seg_start % 3600) / 60):02d}:{seg_start % 60:06.3f}"
-            seg_end_time = f"{int(seg_end / 3600):02d}:{int((seg_end % 3600) / 60):02d}:{seg_end % 60:06.3f}"
+                if text1 and text2:
+                    # 成功断句
+                    # 计算两部分的时间
+                    split_time = trans_obj.start + (trans_obj.end - trans_obj.start) * overlaps[0][1]
 
-            new_line = f"[{seg_start_time} --> {seg_end_time}] [{seg_speaker}] {seg_content}"
-            transcript_lines.append(new_line)
+                    # 创建两个新对象
+                    obj1 = TransObj(trans_obj.start, split_time, text1)
+                    result.append(trans_obj_add_speaker(obj1, overlaps[0][0].value))
+
+                    obj2 = TransObj(split_time, trans_obj.end, text2)
+                    result.append(trans_obj_add_speaker(obj2, overlaps[1][0].value))
+                else:
+                    # 无法断句，使用占比最大的
+                    result.append(trans_obj_add_speaker(trans_obj, overlaps[0][0].value))
+            elif len(overlaps) > 2:
+                # 处理多于两个说话人的情况
+                # 先检查是否有明显主导的说话人（例如占比超过70%）
+                if overlaps[0][1] > 0.7:
+                    # 有明显主导说话人，直接使用
+                    result.append(trans_obj_add_speaker(trans_obj, overlaps[0][0].value))
+                else:
+                    # 没有明显主导说话人，尝试多重分割
+                    # 对重叠比例显著的speaker（例如超过20%）进行排序
+                    significant_overlaps = [o for o in overlaps if o[1] > 0.2]
+
+                    if len(significant_overlaps) <= 1:
+                        # 如果只有一个显著重叠，使用它
+                        result.append(trans_obj_add_speaker(trans_obj, overlaps[0][0].value))
+                    else:
+                        # 计算每个显著重叠的边界比例
+                        total_duration = trans_obj.end - trans_obj.start
+                        segments = []
+                        cumulative_ratio = 0
+
+                        for i, (speaker_obj, ratio) in enumerate(significant_overlaps):
+                            segment_start_time = trans_obj.start + cumulative_ratio * total_duration
+                            cumulative_ratio += ratio
+                            segment_end_time = trans_obj.start + min(cumulative_ratio, 1.0) * total_duration
+
+                            # 为最后一个片段确保使用原始结束时间
+                            if i == len(significant_overlaps) - 1:
+                                segment_end_time = trans_obj.end
+
+                            segments.append((segment_start_time, segment_end_time, speaker_obj.value))
+
+                        # 根据segments分割文本
+                        if len(segments) > 1:
+                            remaining_text = trans_obj.value
+                            for i, (seg_start, seg_end, speaker) in enumerate(segments):
+                                # 计算当前片段应占文本的比例
+                                segment_ratio = (seg_end - seg_start) / total_duration
+
+                                if i < len(segments) - 1:
+                                    # 非最后一个片段，根据比例分割
+                                    seg_text, remaining_text = split_text_at_punctuation(remaining_text,
+                                                                                         segment_ratio / (1.0 - (sum(
+                                                                                             s[1] for s in
+                                                                                             significant_overlaps[
+                                                                                             :i]))))
+                                    if seg_text:
+                                        obj = TransObj(seg_start, seg_end, seg_text)
+                                        result.append(trans_obj_add_speaker(obj, speaker))
+                                else:
+                                    # 最后一个片段，使用剩余全部文本
+                                    if remaining_text:
+                                        obj = TransObj(seg_start, seg_end, remaining_text)
+                                        result.append(trans_obj_add_speaker(obj, speaker))
+                        else:
+                            # 如果无法有效分割，回退到使用占比最大的说话人
+                            result.append(trans_obj_add_speaker(trans_obj, overlaps[0][0].value))
+            else:
+                # 其他情况使用占比最大的说话人
+                result.append(trans_obj_add_speaker(trans_obj, overlaps[0][0].value))
+
+    return result
+
+
+def assign_speakers_to_transcript(transcript, diarization):
+    """将说话人信息分配给转录文本，并根据说话人变化和文本内容智能分段"""
+    if not diarization:
+        return transcript
+
+    result = []
+    last_start_time = 0
+    last_end_time = 0
+    now_speakers = None
+    for turn, _, speaker in diarization.itertracks(yield_label=True):
+        start_time = turn.start
+        end_time = turn.end
+        truly_speakers = increment_speaker(speaker)
+        if now_speakers and now_speakers != truly_speakers:
+            result.append({"start": last_start_time, "end": start_time, "speaker": now_speakers})
+            last_start_time = start_time
+        last_end_time = end_time
+        now_speakers = truly_speakers
+
+    result.append({"start": last_start_time, "end": last_end_time, "speaker": now_speakers})
+    print(f"说话人分区结果: {result}")
+
+    # 给转录文本添加说话人信息
+    transcript_lines = process_intervals(transcript, [TransObj(seg["start"], seg["end"], seg["speaker"]) for seg in result])
 
     return '\n'.join(transcript_lines)
 
 
-def split_transcript_by_speakers(text, start_time, end_time, speaker_segments):
-    """
-    根据说话人变化和文本内容分割转录文本
-
-    Args:
-        text: 转录文本内容
-        start_time: 转录段开始时间（秒）
-        end_time: 转录段结束时间（秒）
-        speaker_segments: 说话人时间段列表，每项为 (start, end, speaker)
-
-    Returns:
-        分割后的片段列表，每项为 (start, end, speaker, content)
-    """
-    # 如果文本很短或没有标点，不进行分割
-    if len(text) < 10 or not re.search(r'[.!?。！？]', text):
-        # 找出时间最长的说话人
-        main_speaker = find_main_speaker_from_segments(speaker_segments, start_time, end_time)
-        return [(start_time, end_time, main_speaker, text)]
-
-    # 查找可能的分割点（句号、问号、感叹号等）
-    split_points = []
-    for match in re.finditer(r'[.!?。！？]', text):
-        # 标点符号位置
-        pos = match.start()
-        # 估计标点在整个时间段中的相对位置
-        relative_pos = pos / len(text)
-        # 计算估计的时间点
-        estimated_time = start_time + relative_pos * (end_time - start_time)
-        split_points.append((pos, estimated_time))
-
-    # 如果没有找到分割点，使用主要说话人
-    if not split_points:
-        main_speaker = find_main_speaker_from_segments(speaker_segments, last_time, end_time)
-        return [(start_time, end_time, main_speaker, text)]
-
-    # 找到最适合的分割点
-    segments = []
-    last_pos = 0
-    last_time = start_time
-
-    for split_pos, split_time in split_points:
-        # 查找最接近这个时间点的说话人变化
-        best_speaker = None
-        min_diff = float('inf')
-
-        for seg_start, seg_end, speaker in speaker_segments:
-            # 说话人片段覆盖这个分割点之前的部分
-            if seg_start <= split_time and last_time >= seg_start:
-                diff = abs(seg_end - split_time)
-                if diff < min_diff:
-                    min_diff = diff
-                    best_speaker = speaker
-
-        # 如果没有找到适合的说话人，使用时间最长的说话人
-        if not best_speaker:
-            best_speaker = find_main_speaker_from_segments(speaker_segments, last_time, split_time)
-
-        # 分割点加1是为了包含标点符号
-        segment_text = text[last_pos:split_pos + 1].strip()
-        if segment_text:  # 确保文本不为空
-            segments.append((last_time, split_time, best_speaker, segment_text))
-
-        last_pos = split_pos + 1
-        last_time = split_time
-
-    # 处理最后一个片段
-    if last_pos < len(text):
-        last_segment_text = text[last_pos:].strip()
-        if last_segment_text:
-            best_speaker = find_main_speaker_from_segments(speaker_segments, last_time, end_time)
-            segments.append((last_time, end_time, best_speaker, last_segment_text))
-
-    return segments
-
-
-def find_main_speaker_from_segments(speaker_segments, start_time, end_time):
-    """从说话人片段中找出指定时间段内的主要说话人"""
-    speakers = {}
-
-    for seg_start, seg_end, speaker in speaker_segments:
-        # 检查说话人片段与目标时间段是否有重叠
-        if max(seg_start, start_time) < min(seg_end, end_time):
-            # 计算重叠时间
-            overlap = min(seg_end, end_time) - max(seg_start, start_time)
-            speakers[speaker] = speakers.get(speaker, 0) + overlap
-
-    # 如果没有找到说话人，返回默认值
-    if not speakers:
-        return "SPEAKER_00"
-
-    # 返回占比最高的说话人
-    return max(speakers, key=speakers.get)
-
-
 if __name__ == "__main__":
     socketio.run(app, debug=True)
-
