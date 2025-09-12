@@ -491,14 +491,17 @@ def get_api_models():
 def transcribe_task(task_id, files, selected_language, speakers_num, folder_path):
     # 检查是否可以直接使用现有的diarization.txt文件
     if folder_path and selected_language == "auto" and speakers_num == 0:
+        print("Checking for existing diarization.txt file...")
         # 构建diarization.txt的完整路径
         diarization_file_path = os.path.join(AUDIO_DIR, folder_path, "diarization.txt")
+        print(f"Looking for diarization file at: {diarization_file_path}")
         # 检查文件是否存在
         if os.path.isfile(diarization_file_path):
             try:
                 # 读取文件内容
                 with open(diarization_file_path, 'r', encoding='utf-8') as f:
                     transcripts = f.read()
+                print("Found existing diarization.txt file, using it directly.")
                 socketio.emit('workflow_progress',
                           {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed',
                            'result': transcripts})
@@ -735,8 +738,6 @@ def transcribe():
     folder_path = request.form.get("folder_path", "")  # 获取可选的文件夹路径参数
     speakers_num = request.form.get("speakers_num", 0)  # 获取说话人数量
 
-    can_use_diarization = False
-
     if not start or not end:
         return jsonify({"message": "Invalid time range"}), 400
     start_dt = datetime.fromisoformat(start)
@@ -747,9 +748,6 @@ def transcribe():
 
     if not files:
         return jsonify({"message": "No files found in range"}), 404
-
-    if folder_path and selected_language == "auto" and speakers_num == 0:
-        can_use_diarization = True
 
     import uuid
     task_id = str(uuid.uuid4())
@@ -1140,7 +1138,7 @@ def process_diarization(audio_path, speakers=0):
 
     try:
         if speakers:
-            diarization = pipeline(audio_path, min_speakers=2, num_speakers=speakers)
+            diarization = pipeline(audio_path, num_speakers=speakers)
         else:
             diarization = pipeline(audio_path, min_speakers=2)
         return diarization
