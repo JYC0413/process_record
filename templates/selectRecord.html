@@ -1339,12 +1339,14 @@
             }
         });
 
+        console.log('starting transcription request');
         fetch('/transcribe', {
             method: 'POST',
             body: formData
         })
             .then(response => response.json())
             .then(data => {
+                console.log('returned data:', data);
                 if (!data || !data.task_id) {
                     if (data && data.message) {
                         alert("Failed to start transcription: " + data.message);
