@@ -488,6 +488,244 @@ def get_api_models():
         return jsonify({"models": [], "error": f"Error fetching models: {str(e)}"}), 500
 
 
+def transcribe_task(task_id, files, selected_language, speakers_num, folder_path):
+    # 检查是否可以直接使用现有的diarization.txt文件
+    if folder_path and selected_language == "auto" and speakers_num == 0:
+        # 构建diarization.txt的完整路径
+        diarization_file_path = os.path.join(AUDIO_DIR, folder_path, "diarization.txt")
+        # 检查文件是否存在
+        if os.path.isfile(diarization_file_path):
+            try:
+                # 读取文件内容
+                with open(diarization_file_path, 'r', encoding='utf-8') as f:
+                    transcripts = f.read()
+                socketio.emit('workflow_progress',
+                          {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed',
+                           'result': transcripts})
+                return
+            except Exception as e:
+                socketio.emit('workflow_progress',
+                          {'task_id': task_id, 'step': 'error',
+                           'message': f'Error reading diarization.txt file: {str(e)}'})
+                # 如果读取失败，继续正常流程
+
+    socketio.emit('workflow_progress',
+                  {'task_id': task_id, 'step': 'start', 'message': 'Starting audio processing'})
+
+    merged_audio_group = merge_wav_files_grouped(files)
+    socketio.emit('workflow_progress',
+                  {'task_id': task_id, 'step': 'merge',
+                   'message': f'Audio grouping completed, with a total of {len(merged_audio_group)} groups'})
+
+    # 创建一个完整的合并音频用于说话人分区
+    full_audio = None
+    for audio in merged_audio_group:
+        if full_audio is None:
+            full_audio = audio
+        else:
+            full_audio += audio
+
+    # 创建临时文件保存完整的音频用于说话人分区
+    full_audio_path = None
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
+        full_audio.export(tmpfile, format="wav")
+        full_audio_path = tmpfile.name
+
+    socketio.emit('workflow_progress',
+                  {'task_id': task_id, 'step': 'diarization_prepare',
+                   'message': 'Preparing for speaker diarization'})
+
+    transcripts = ""
+    total_content = ""
+    standard_code = ""
+
+    # 如果用户选择了特定语言（不是自动检测），直接使用该语言
+    if selected_language != "auto":
+        socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'lang_select',
+                                            'message': f'Using the user-selected language: {standard_code}'})
+    standard_code = selected_language
+
+
+    # 首先完成所有音频段的转录，不进行说话人分区
+    with httpx.Client() as client:
+        for i, audio in enumerate(merged_audio_group):
+            socketio.emit('workflow_progress',
+                          {'task_id': task_id, 'step': f'transcribe_{i + 1}',
+                           'message': f'Transcribing group {i + 1}'})
+            buf = io.BytesIO()
+            audio.export(buf, format="wav")
+            buf.seek(0)
+
+            # 创建临时文件用于语言检测
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
+                tmpfile.write(buf.read())
+                tmpfile_path = tmpfile.name
+                buf.seek(0)
+
+                # 使用确定的语言代码进行转录
+                if standard_code:
+                    data = {
+                        'max_len': "1024",
+                        'language': standard_code
+                    }
+                else:
+                    data = {}
+
+                # 动态获取 Whisper API 配置
+                whisper_url, whisper_api_key, whisper_model, whisper_prompt = get_whisper_api_config()
+                headers = {}
+                if whisper_api_key:
+                    headers['Authorization'] = f'Bearer {whisper_api_key}'
+
+                # 如果设置了模型，添加到请求数据中
+                if whisper_model:
+                    data['model'] = whisper_model
+
+                # 如果设置了prompt，添加到请求数据中
+                if whisper_prompt:
+                    data['prompt'] = whisper_prompt
+
+                # 添加重试机制，最多尝试3次
+                max_retries = 3
+                retry_delay = 2  # 初始延迟2秒
+                success = False
+                transcript = None
+
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        buf.seek(0)
+                        file_bytes = buf.getvalue()
+                        files_httpx = {"file": ("audio.wav", file_bytes, "audio/wav")}
+
+                        response = client.post(
+                            whisper_url,
+                            files=files_httpx,
+                            data=data,
+                            headers=headers,
+                            timeout=120.0
+                        )
+
+                        if response.status_code == 200:
+                            transcript = response.json()
+                            success = True
+                            break
+                        else:
+                            socketio.emit('workflow_progress', {
+                                'task_id': task_id,
+                                'step': f'transcribe_{i + 1}_retry',
+                                'message': f'Attempt {attempt}/{max_retries} failed with status code {response.status_code}. Retrying...'
+                            })
+                    except Exception as e:
+                        socketio.emit('workflow_progress', {
+                            'task_id': task_id,
+                            'step': f'transcribe_{i + 1}_retry',
+                            'message': f'Attempt {attempt}/{max_retries} failed: {str(e)}. Retrying...'
+                        })
+
+                    # 如果不是最后一次尝试，则等待后重试
+                    if attempt < max_retries:
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # 指数退避
+
+                # 处理转录结果或失败情况
+                previous_duration = sum(len(merged_audio_group[j]) for j in range(i))
+
+                if success and transcript:
+                    # 处理成功获取的转录结果
+                    if "text" in transcript:
+                        text_content = transcript["text"]
+                        adjusted_lines = []
+                        for line in text_content.split('\n'):
+                            match = re.search(
+                                r'\[(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})\]\s*(.*)', line)
+                            if match:
+                                start_time = match.group(1)
+                                end_time = match.group(2)
+                                content = match.group(3)
+                                start_ms = (int(start_time.split(':')[0]) * 3600 +
+                                            int(start_time.split(':')[1]) * 60 +
+                                            float(start_time.split(':')[2])) * 1000
+                                end_ms = (int(end_time.split(':')[0]) * 3600 +
+                                          int(end_time.split(':')[1]) * 60 +
+                                          float(end_time.split(':')[2])) * 1000
+                                adjusted_start_ms = start_ms + previous_duration
+                                adjusted_end_ms = end_ms + previous_duration
+                                adjusted_start = f"{int(adjusted_start_ms / 3600000):02d}:{int((adjusted_start_ms % 3600000) / 60000):02d}:{int((adjusted_start_ms % 60000) / 1000):02d}.{int(adjusted_start_ms % 1000):03d}"
+                                adjusted_end = f"{int(adjusted_end_ms / 3600000):02d}:{int((adjusted_end_ms % 3600000) / 60000):02d}:{int((adjusted_end_ms % 60000) / 1000):02d}.{int(adjusted_end_ms % 1000):03d}"
+
+                                adjusted_line = f"[{adjusted_start} --> {adjusted_end}] {content}"
+                                total_content += content
+                                adjusted_lines.append(adjusted_line)
+                            else:
+                                adjusted_lines.append(line)
+                        transcript["text"] = '\n'.join(adjusted_lines)
+                    if not transcripts:
+                        transcripts = transcript["text"]
+                    else:
+                        transcripts += "\n" + transcript["text"]
+                    socketio.emit('workflow_progress', {'task_id': task_id, 'step': f'transcribe_{i + 1}_done',
+                                                        'message': f'Group {i + 1} transcription completed'})
+
+                else:
+                    # 处理转录失败的情况 - 添加空的时间段标记
+                    audio_duration_ms = len(audio)
+                    start_ms = previous_duration
+                    end_ms = start_ms + audio_duration_ms
+
+                    adjusted_start = f"{int(start_ms / 3600000):02d}:{int((start_ms % 3600000) / 60000):02d}:{int((start_ms % 60000) / 1000):02d}.{int(start_ms % 1000):03d}"
+                    adjusted_end = f"{int(end_ms / 3600000):02d}:{int((end_ms % 3600000) / 60000):02d}:{int((end_ms % 60000) / 1000):02d}.{int(end_ms % 1000):03d}"
+
+                    empty_transcript = f"[{adjusted_start} --> {adjusted_end}] "
+
+                    if not transcripts:
+                        transcripts = empty_transcript
+                    else:
+                        transcripts += "\n" + empty_transcript
+
+                    socketio.emit('workflow_progress', {
+                        'task_id': task_id,
+                        'step': f'transcribe_{i + 1}_skip',
+                        'message': f'Transcription for group {i + 1} failed. After {max_retries} attempts, it has been abandoned. An empty segment will be added, and processing will continue'
+                    })
+
+            # 删除临时文件
+            try:
+                os.unlink(tmpfile_path)
+            except:
+                pass
+
+    # 所有转录完成后，对整个音频进行一次性说话人分区
+    socketio.emit('workflow_progress',
+                  {'task_id': task_id, 'step': 'diarization', 'message': 'Performing speaker diarization'})
+
+    try:
+        # 处理说话人分区
+        diarization = process_diarization(full_audio_path, speakers_num)
+        if diarization:
+            # 将说话人信息添加到完整的转录文本中
+            transcripts = assign_speakers_to_transcript(transcripts, diarization)
+            socketio.emit('workflow_progress',
+                          {'task_id': task_id, 'step': 'diarization_done',
+                           'message': 'Speaker diarization completed'})
+            socketio.emit('workflow_progress',
+                          {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed',
+                           'result': transcripts})
+        else:
+            socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'diarization_error',
+                                                'message': 'Speaker diarization failed. Processing will continue without speaker information'})
+    except Exception as e:
+        socketio.emit('workflow_progress',
+                      {'task_id': task_id, 'step': 'diarization_error',
+                       'message': f'Speaker diarization error: {str(e)}'})
+    finally:
+        # 删除临时文件
+        try:
+            if full_audio_path:
+                os.unlink(full_audio_path)
+        except Exception as e:
+            print(f"清理临时文件出错: {str(e)}")
+
+
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
     """处理音频转文字的接口，使用WebSocket通知进度"""
@@ -495,6 +733,9 @@ def transcribe():
     end = request.form.get("end_time")
     selected_language = request.form.get("language", "auto")
     folder_path = request.form.get("folder_path", "")  # 获取可选的文件夹路径参数
+    speakers_num = request.form.get("speakers_num", 0)  # 获取说话人数量
+
+    can_use_diarization = False
 
     if not start or not end:
         return jsonify({"message": "Invalid time range"}), 400
@@ -507,241 +748,13 @@ def transcribe():
     if not files:
         return jsonify({"message": "No files found in range"}), 404
 
+    if folder_path and selected_language == "auto" and speakers_num == 0:
+        can_use_diarization = True
+
     import uuid
     task_id = str(uuid.uuid4())
 
-    def transcribe_task(task_id, files, selected_language):
-        socketio.emit('workflow_progress',
-                      {'task_id': task_id, 'step': 'start', 'message': 'Starting audio processing'})
-
-        merged_audio_group = merge_wav_files_grouped(files)
-        socketio.emit('workflow_progress',
-                      {'task_id': task_id, 'step': 'merge',
-                       'message': f'Audio grouping completed, with a total of {len(merged_audio_group)} groups'})
-
-        # 创建一个完整的合并音频用于说话人分区
-        full_audio = None
-        for audio in merged_audio_group:
-            if full_audio is None:
-                full_audio = audio
-            else:
-                full_audio += audio
-
-        # 创建临时文件保存完整的音频用于说话人分区
-        full_audio_path = None
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
-            full_audio.export(tmpfile, format="wav")
-            full_audio_path = tmpfile.name
-
-        socketio.emit('workflow_progress',
-                      {'task_id': task_id, 'step': 'diarization_prepare',
-                       'message': 'Preparing for speaker diarization'})
-
-        transcripts = ""
-        total_content = ""
-        standard_code = ""
-
-        # 如果用户选择了特定语言（不是自动检测），直接使用该语言
-        if selected_language != "auto":
-            standard_code = selected_language
-            socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'lang_select',
-                                                'message': f'Using the user-selected language: {standard_code}'})
-
-        # 首先完成所有音频段的转录，不进行说话人分区
-        with httpx.Client() as client:
-            for i, audio in enumerate(merged_audio_group):
-                socketio.emit('workflow_progress',
-                              {'task_id': task_id, 'step': f'transcribe_{i + 1}',
-                               'message': f'Transcribing group {i + 1}'})
-                buf = io.BytesIO()
-                audio.export(buf, format="wav")
-                buf.seek(0)
-
-                # 创建临时文件用于语言检测
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
-                    tmpfile.write(buf.read())
-                    tmpfile_path = tmpfile.name
-                    buf.seek(0)
-
-                    # 只在自动检测模式下检测第一组音频的语言
-                    if i == 0 and selected_language == "auto":
-                        signal = language_id.load_audio(tmpfile_path)
-                        prediction = language_id.classify_batch(signal)
-                        predicted_scores = prediction[0]
-                        confidence_scores = prediction[1]
-                        predicted_language = language_id.hparams.label_encoder.decode_torch(
-                            torch.argmax(predicted_scores, dim=1)
-                        )
-                        standard_code = LANGUAGE_MAPPING.get(predicted_language[0], predicted_language[0].lower())
-                        if torch.max(confidence_scores).item() < 0.5:
-                            standard_code = "en"
-                        socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'lang_detect',
-                                                            'message': f'Detected language: {standard_code}, confidence: {torch.max(confidence_scores).item():.4f}'})
-
-                    # 使用确定的语言代码进行转录
-                    if standard_code:
-                        data = {
-                            'max_len': "1024",
-                            'language': standard_code
-                        }
-                    else:
-                        data = {}
-
-                    # 动态获取 Whisper API 配置
-                    whisper_url, whisper_api_key, whisper_model, whisper_prompt = get_whisper_api_config()
-                    headers = {}
-                    if whisper_api_key:
-                        headers['Authorization'] = f'Bearer {whisper_api_key}'
-
-                    # 如果设置了模型，添加到请求数据中
-                    if whisper_model:
-                        data['model'] = whisper_model
-
-                    # 如果设置了prompt，添加到请求数据中
-                    if whisper_prompt:
-                        data['prompt'] = whisper_prompt
-
-                    # 添加重试机制，最多尝试3次
-                    max_retries = 3
-                    retry_delay = 2  # 初始延迟2秒
-                    success = False
-                    transcript = None
-
-                    for attempt in range(1, max_retries + 1):
-                        try:
-                            buf.seek(0)
-                            file_bytes = buf.getvalue()
-                            files_httpx = {"file": ("audio.wav", file_bytes, "audio/wav")}
-
-                            response = client.post(
-                                whisper_url,
-                                files=files_httpx,
-                                data=data,
-                                headers=headers,
-                                timeout=120.0
-                            )
-
-                            if response.status_code == 200:
-                                transcript = response.json()
-                                success = True
-                                break
-                            else:
-                                socketio.emit('workflow_progress', {
-                                    'task_id': task_id,
-                                    'step': f'transcribe_{i + 1}_retry',
-                                    'message': f'Attempt {attempt}/{max_retries} failed with status code {response.status_code}. Retrying...'
-                                })
-                        except Exception as e:
-                            socketio.emit('workflow_progress', {
-                                'task_id': task_id,
-                                'step': f'transcribe_{i + 1}_retry',
-                                'message': f'Attempt {attempt}/{max_retries} failed: {str(e)}. Retrying...'
-                            })
-
-                        # 如果不是最后一次尝试，则等待后重试
-                        if attempt < max_retries:
-                            time.sleep(retry_delay)
-                            retry_delay *= 2  # 指数退避
-
-                    # 处理转录结果或失败情况
-                    previous_duration = sum(len(merged_audio_group[j]) for j in range(i))
-
-                    if success and transcript:
-                        # 处理成功获取的转录结果
-                        if "text" in transcript:
-                            text_content = transcript["text"]
-                            adjusted_lines = []
-                            for line in text_content.split('\n'):
-                                match = re.search(
-                                    r'\[(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})\]\s*(.*)', line)
-                                if match:
-                                    start_time = match.group(1)
-                                    end_time = match.group(2)
-                                    content = match.group(3)
-                                    start_ms = (int(start_time.split(':')[0]) * 3600 +
-                                                int(start_time.split(':')[1]) * 60 +
-                                                float(start_time.split(':')[2])) * 1000
-                                    end_ms = (int(end_time.split(':')[0]) * 3600 +
-                                              int(end_time.split(':')[1]) * 60 +
-                                              float(end_time.split(':')[2])) * 1000
-                                    adjusted_start_ms = start_ms + previous_duration
-                                    adjusted_end_ms = end_ms + previous_duration
-                                    adjusted_start = f"{int(adjusted_start_ms / 3600000):02d}:{int((adjusted_start_ms % 3600000) / 60000):02d}:{int((adjusted_start_ms % 60000) / 1000):02d}.{int(adjusted_start_ms % 1000):03d}"
-                                    adjusted_end = f"{int(adjusted_end_ms / 3600000):02d}:{int((adjusted_end_ms % 3600000) / 60000):02d}:{int((adjusted_end_ms % 60000) / 1000):02d}.{int(adjusted_end_ms % 1000):03d}"
-
-                                    adjusted_line = f"[{adjusted_start} --> {adjusted_end}] {content}"
-                                    total_content += content
-                                    adjusted_lines.append(adjusted_line)
-                                else:
-                                    adjusted_lines.append(line)
-                            transcript["text"] = '\n'.join(adjusted_lines)
-                        if not transcripts:
-                            transcripts = transcript["text"]
-                        else:
-                            transcripts += "\n" + transcript["text"]
-                        socketio.emit('workflow_progress', {'task_id': task_id, 'step': f'transcribe_{i + 1}_done',
-                                                            'message': f'Group {i + 1} transcription completed'})
-
-                    else:
-                        # 处理转录失败的情况 - 添加空的时间段标记
-                        audio_duration_ms = len(audio)
-                        start_ms = previous_duration
-                        end_ms = start_ms + audio_duration_ms
-
-                        adjusted_start = f"{int(start_ms / 3600000):02d}:{int((start_ms % 3600000) / 60000):02d}:{int((start_ms % 60000) / 1000):02d}.{int(start_ms % 1000):03d}"
-                        adjusted_end = f"{int(end_ms / 3600000):02d}:{int((end_ms % 3600000) / 60000):02d}:{int((end_ms % 60000) / 1000):02d}.{int(end_ms % 1000):03d}"
-
-                        empty_transcript = f"[{adjusted_start} --> {adjusted_end}] "
-
-                        if not transcripts:
-                            transcripts = empty_transcript
-                        else:
-                            transcripts += "\n" + empty_transcript
-
-                        socketio.emit('workflow_progress', {
-                            'task_id': task_id,
-                            'step': f'transcribe_{i + 1}_skip',
-                            'message': f'Transcription for group {i + 1} failed. After {max_retries} attempts, it has been abandoned. An empty segment will be added, and processing will continue'
-                        })
-
-                # 删除临时文件
-                try:
-                    os.unlink(tmpfile_path)
-                except:
-                    pass
-
-        # 所有转录完成后，对整个音频进行一次性说话人分区
-        socketio.emit('workflow_progress',
-                      {'task_id': task_id, 'step': 'diarization', 'message': 'Performing speaker diarization'})
-
-        try:
-            # 处理说话人分区
-            diarization = process_diarization(full_audio_path)
-            if diarization:
-                # 将说话人信息添加到完整的转录文本中
-                transcripts = assign_speakers_to_transcript(transcripts, diarization)
-                socketio.emit('workflow_progress',
-                              {'task_id': task_id, 'step': 'diarization_done',
-                               'message': 'Speaker diarization completed'})
-                socketio.emit('workflow_progress',
-                              {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed',
-                               'result': transcripts})
-            else:
-                socketio.emit('workflow_progress', {'task_id': task_id, 'step': 'diarization_error',
-                                                    'message': 'Speaker diarization failed. Processing will continue without speaker information'})
-        except Exception as e:
-            socketio.emit('workflow_progress',
-                          {'task_id': task_id, 'step': 'diarization_error',
-                           'message': f'Speaker diarization error: {str(e)}'})
-        finally:
-            # 删除临时文件
-            try:
-                if full_audio_path:
-                    os.unlink(full_audio_path)
-            except Exception as e:
-                print(f"清理临时文件出错: {str(e)}")
-
-    socketio.start_background_task(transcribe_task, task_id, files, selected_language)
+    socketio.start_background_task(transcribe_task, task_id, files, selected_language, speakers_num, folder_path)
     return jsonify({'task_id': task_id})
 
 
