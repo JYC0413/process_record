@@ -912,6 +912,12 @@
                                 <option value="it">Italian (Italiano)</option>
                             </select>
                         </div>
+                        <!-- 新增说话人数输入框 -->
+                        <div class="form-group">
+                            <label for="speakersNumInput">Number of Speakers (optional):</label>
+                            <input type="number" id="speakersNumInput" name="speakers_num" min="0" placeholder="Leave blank if unknown"
+                                   style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
+                        </div>
                         <div class="btn-container">
                             <button type="button" class="btn" id="btnStartTranscription">Start Transcription</button>
                         </div>
@@ -1016,6 +1022,12 @@
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
+    function generateUniqueId() {
+        return Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    const taskId = generateUniqueId();
+
     // 全局变量，用于跟踪当前时间格式
     let isUTC = false;
 
@@ -1275,6 +1287,11 @@
         const selectedLanguage = form.querySelector('#languageSelect').value;
         const folderPath = document.getElementById('workflowFolderPath').value;
 
+        // 新增：获取说话人数输入框的值
+        const speakersNumInput = document.getElementById('speakersNumInput');
+        let speakersNum = speakersNumInput && speakersNumInput.value ? parseInt(speakersNumInput.value, 10) : 0;
+        if (isNaN(speakersNum)) speakersNum = 0;
+
         if (!startTime || !endTime) {
             alert('Please select both start and end times.');
             enableButton(btn);
@@ -1287,11 +1304,14 @@
         formData.set('start_time', isUTC ? startTime : toUTCString(startTime));
         formData.set('end_time', isUTC ? endTime : toUTCString(endTime));
         formData.set('language', selectedLanguage);
+        formData.set('task_id', taskId);
 
         // 添加文件夹路径
         if (folderPath) {
             formData.set('folder_path', folderPath);
         }
+        // 新增：添加speakers_num参数
+        formData.set('speakers_num', speakersNum);
 
         const socket = io();
         let steps = [];
@@ -1313,7 +1333,6 @@
                     document.getElementById('workflowProgressBar').style.display = 'none';
                     return;
                 }
-                const taskId = data.task_id;
 
                 socket.on('workflow_progress', function (msg) {
                     if (!msg || msg.task_id !== taskId) return;

@@ -502,6 +502,7 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
                 with open(diarization_file_path, 'r', encoding='utf-8') as f:
                     transcripts = f.read()
                 print("Found existing diarization.txt file, using it directly.")
+                print(transcripts)
                 socketio.emit('workflow_progress',
                           {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed',
                            'result': transcripts})
@@ -734,9 +735,10 @@ def transcribe():
     """处理音频转文字的接口，使用WebSocket通知进度"""
     start = request.form.get("start_time")
     end = request.form.get("end_time")
+    task_id = request.form.get("task_id")
     selected_language = request.form.get("language", "auto")
     folder_path = request.form.get("folder_path", "")  # 获取可选的文件夹路径参数
-    speakers_num = request.form.get("speakers_num", 0)  # 获取说话人数量
+    speakers_num = int(request.form.get("speakers_num", 0))  # 获取说话人数量并转换为整数  # 获取说话人数量
 
     if not start or not end:
         return jsonify({"message": "Invalid time range"}), 400
@@ -748,9 +750,6 @@ def transcribe():
 
     if not files:
         return jsonify({"message": "No files found in range"}), 404
-
-    import uuid
-    task_id = str(uuid.uuid4())
 
     socketio.start_background_task(transcribe_task, task_id, files, selected_language, speakers_num, folder_path)
     return jsonify({'task_id': task_id})
