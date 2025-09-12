@@ -646,6 +646,12 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
                                 start_time = match.group(1)
                                 end_time = match.group(2)
                                 content = match.group(3)
+                                # 检查是否以[或(开头，如果是则跳过这一行
+                                if content.strip().startswith('[') or content.strip().startswith('('):
+                                    continue
+                                # 检查内容是否全部都是\command格式的文本，如果是则跳过
+                                if re.fullmatch(r'(\s*\\[a-z]+\d*\s*)+', content):
+                                    continue
                                 start_ms = (int(start_time.split(':')[0]) * 3600 +
                                             int(start_time.split(':')[1]) * 60 +
                                             float(start_time.split(':')[2])) * 1000
@@ -1221,6 +1227,11 @@ def process_intervals(transcript, speakers_list):
         start_time = match.group(1)
         end_time = match.group(2)
         content = match.group(3)
+        if content.strip().startswith('[') or content.strip().startswith('('):
+            continue
+            # 检查内容是否全部都是\command格式的文本，如果是则跳过
+        if re.fullmatch(r'(\s*\\[a-z]+\d*\s*)+', content):
+            continue
 
         # 将时间戳格式转换为秒
         start_seconds = (int(start_time.split(':')[0]) * 3600 +
