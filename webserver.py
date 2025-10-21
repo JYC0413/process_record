@@ -574,8 +574,26 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
             group_transcriptions = data.get('transcriptions', [])
             group_speaker_map = data.get('speaker_map', [])
 
-            # 累计结果
-            all_transcriptions.extend(group_transcriptions)
+            # 计算当前组在整体音频中的偏移（秒），并生成偏移后的副本用于全局合并
+            group_offset_seconds = sum(len(g) for g in merged_audio_group[:i]) / 1000.0
+
+            def seconds_to_hhmmss(s: float) -> str:
+                h = int(s // 3600)
+                m = int((s % 3600) // 60)
+                sec = s % 60
+                return f"{h:02d}:{m:02d}:{sec:06.3f}"
+
+            shifted_transcriptions = []
+            for entry in group_transcriptions:
+                st = hhmmss_to_seconds(entry.get('start_time', '00:00:00')) + group_offset_seconds
+                ed = hhmmss_to_seconds(entry.get('end_time', '00:00:00')) + group_offset_seconds
+                new_entry = entry.copy()
+                new_entry['start_time'] = seconds_to_hhmmss(st)
+                new_entry['end_time'] = seconds_to_hhmmss(ed)
+                shifted_transcriptions.append(new_entry)
+
+            # 将偏移后的结果累加到全局转录中（保留原 group_transcriptions 以便当前组内使用相对时间）
+            all_transcriptions.extend(shifted_transcriptions)
 
             # 如果是第一次，保存全局的 speaker_map
             if i == 0 and group_speaker_map:
