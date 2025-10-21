@@ -18,10 +18,6 @@ import numpy as np
 
 from dotenv import load_dotenv
 
-from speechbrain.inference import EncoderClassifier
-# 添加 pyannote.audio 导入
-from pyannote.audio import Pipeline
-
 from typing import NamedTuple
 
 
@@ -1055,4 +1051,4 @@ def download_segment():
 
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    socketio.run(app, port=8000, debug=True)
