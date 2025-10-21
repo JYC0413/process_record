@@ -486,8 +486,8 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
                 "items": {
                     "type": "object",
                     "properties": {
-                        "start_time": {"type": "string"},
-                        "end_time": {"type": "string"},
+                        "start_time": {"type": "float"},
+                        "end_time": {"type": "float"},
                         "speaker": {"type": "string"},
                         "text": {"type": "string"}
                     },
@@ -531,7 +531,7 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
             if i == 0:
                 prompt = ('请将我上传的音频文件转录为文本，并精确标注每句话的起始时间、结束时间以及说话人。**请不要翻译，保持语音中的原语言输出转录文本。**'
                           '输出格式必须是 JSON，包含 "transcriptions"（数组） 和 "speaker_map"（说话人映射和特征）。'
-                          '时间格式为 "HH:MM:SS.xxx"，speaker 请用 "Speaker 1" 等标识。')
+                          '时间格式严格遵循秒数（例如：86.160），speaker 请用 "Speaker 1" 等标识。')
                 contents = [prompt, combined_file]
             else:
                 # 构造包含参考说话人文件的 prompt
@@ -545,7 +545,7 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
                           f'1. 要转录的音频文件： {combined_file.name}\n'
                           f'2. 说话人参考：\n{refs_text}\n'
                           '3. 如果出现与参考都不同的新说话人，请按顺序标记为 Speaker X（例如 Speaker 5）。\n'
-                          '请将音频转录为文本，并精确标注每句话的起始时间、结束时间以及说话人。**请不要翻译，保持语音中的原语言输出转录文本。** 输出格式必须是 JSON：包含 "transcriptions" 数组以及 "speaker_map"。')
+                          '请将音频转录为文本，并精确标注每句话的起始时间、结束时间以及说话人。时间格式严格遵循秒数（例如：86.160），**请不要翻译，保持语音中的原语言输出转录文本。** 输出格式必须是 JSON：包含 "transcriptions" 数组以及 "speaker_map"。')
                 contents = [prompt, combined_file] + ref_objs
 
             socketio.emit('workflow_progress',
