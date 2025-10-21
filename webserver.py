@@ -552,18 +552,54 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
                           {'task_id': task_id, 'step': f'upload_{i + 1}',
                            'message': f'Calling Gemini for group {i + 1}'})
 
-            # 调用 Gemini
             try:
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=contents,
-                    config={
-                        "response_mime_type": "application/json",
-                        "response_schema": transcription_schema,
-                    }
-                )
-                transcription_json_string = response.text
-                data = json.loads(transcription_json_string)
+                max_retries = 3
+                data = None
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        response = client.models.generate_content(
+                            model="gemini-2.5-flash",
+                            contents=contents,
+                            config={
+                                "response_mime_type": "application/json",
+                                "response_schema": transcription_schema,
+                            }
+                        )
+                        status = getattr(response, "status_code", None)
+                        # 如果返回明确的 503 或其它 5xx，触发重试
+                        if status == 503:
+                            raise RuntimeError("503 Service Unavailable")
+                        if status is not None and 500 <= status < 600:
+                            raise RuntimeError(f"Server error {status}")
+                        transcription_json_string = response.text
+                        data = json.loads(transcription_json_string)
+                        break
+                    except Exception as e:
+                        # 最后一次失败则上报并返回
+                        if attempt >= max_retries:
+                            socketio.emit('workflow_progress',
+                                          {'task_id': task_id, 'step': 'error',
+                                           'message': f'Error from Gemini on group {i+1}: {str(e)}'})
+                            return
+                        # 判断是否为 503 类服务器不可用错误
+                        is_503 = False
+                        try:
+                            if hasattr(e, "response") and getattr(e.response, "status_code", None) == 503:
+                                is_503 = True
+                        except Exception:
+                            pass
+                        if "503" in str(e):
+                            is_503 = True
+                        wait = 60 if is_503 else 5
+                        socketio.emit('workflow_progress',
+                                      {'task_id': task_id, 'step': 'retry',
+                                       'message': f'Error from Gemini on group {i+1}: {str(e)}. Retrying in {wait} seconds (attempt {attempt}/{max_retries})'})
+                        time.sleep(wait)
+                if data is None:
+                    socketio.emit('workflow_progress',
+                                  {'task_id': task_id, 'step': 'error',
+                                   'message': f'Failed to get valid response from Gemini after {max_retries} attempts for group {i+1}.'})
+                    return
             except Exception as e:
                 socketio.emit('workflow_progress',
                               {'task_id': task_id, 'step': 'error',
