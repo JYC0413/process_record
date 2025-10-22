@@ -601,10 +601,12 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
 
             # 合并 transcriptions
             group_transcriptions = data.get('transcriptions', [])
+            print(group_transcriptions)
             group_speaker_map = data.get('speaker_map', [])
 
             # 计算当前组在整体音频中的偏移（秒），并生成偏移后的副本用于全局合并
             group_offset_seconds = sum(len(g) for g in merged_audio_group[:i]) / 1000.0
+            print(f"Group {i + 1} offset seconds: {group_offset_seconds}")
 
             shifted_transcriptions = []
             for entry in group_transcriptions:
