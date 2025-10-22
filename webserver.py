@@ -465,7 +465,7 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
     socketio.emit('workflow_progress',
                   {'task_id': task_id, 'step': 'start', 'message': 'Starting audio processing'})
 
-    merged_audio_group = merge_wav_files_grouped(files, 900)  # 每组不超过900秒（15分钟）
+    merged_audio_group = merge_wav_files_grouped(files, 1800)  # 每组不超过1800秒（15分钟）
 
     socketio.emit('workflow_progress',
                   {'task_id': task_id, 'step': 'merge',
