@@ -724,12 +724,24 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
             except:
                 pass
 
-        # 全部分组处理完毕，构造最终 JSON 字符串
-        final_result = {
-            "transcriptions": all_transcriptions,
-            "speaker_map": global_speaker_map
-        }
-        transcripts = json.dumps(final_result, ensure_ascii=False, indent=2)
+        # 全部分组处理完毕，构造最终字符串，每行格式：[HH:MM:SS.mmm --> HH:MM:SS.mmm] [SPEAKER_01] 文本
+        lines = []
+        for entry in all_transcriptions:
+            st = entry.get("start_time", 0.0)
+            ed = entry.get("end_time", 0.0)
+            speaker_raw = entry.get("speaker", "Unknown")
+            text = (entry.get("text", "") or "").strip()
+            start_str = seconds_to_hhmmss(st)
+            end_str = seconds_to_hhmmss(ed)
+            m = re.search(r"(\d+)", str(speaker_raw))
+            if m:
+                speaker_label = f"SPEAKER_{int(m.group(1)):02d}"
+            else:
+                sanitized = re.sub(r"\W+", "_", str(speaker_raw)).strip("_").upper() or "UNKNOWN"
+                speaker_label = f"SPEAKER_{sanitized}"
+            lines.append(f"[{start_str} --> {end_str}] [{speaker_label}] {text}")
+        transcripts = "\n".join(lines)
+        
         socketio.emit('workflow_progress',
                       {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed',
                        'result': transcripts})
