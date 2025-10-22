@@ -621,11 +621,11 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
 
             shifted_transcriptions = []
             for entry in group_transcriptions:
-                st = hhmmss_to_seconds(entry.get('start_time', '00:00:00')) + group_offset_seconds
-                ed = hhmmss_to_seconds(entry.get('end_time', '00:00:00')) + group_offset_seconds
+                st = entry.get('start_time', 0) + group_offset_seconds
+                ed = entry.get('end_time', 0) + group_offset_seconds
                 new_entry = entry.copy()
-                new_entry['start_time'] = seconds_to_hhmmss(st)
-                new_entry['end_time'] = seconds_to_hhmmss(ed)
+                new_entry['start_time'] = st
+                new_entry['end_time'] = ed
                 shifted_transcriptions.append(new_entry)
 
             # 将偏移后的结果累加到全局转录中（保留原 group_transcriptions 以便当前组内使用相对时间）
@@ -644,8 +644,8 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
                     sp = entry.get('speaker')
                     if not sp:
                         continue
-                    st = hhmmss_to_seconds(entry.get('start_time', '00:00:00'))
-                    ed = hhmmss_to_seconds(entry.get('end_time', '00:00:00'))
+                    st = entry.get('start_time', 0)
+                    ed = entry.get('end_time', 0)
                     if ed <= st:
                         continue
                     speaker_entries.setdefault(sp, []).append((st, ed))
