@@ -172,15 +172,11 @@ def merge_wav_files_grouped(file_list, max_duration=30):
 
     for fname in file_list:
         audio = AudioSegment.from_wav(os.path.join(AUDIO_DIR, fname))
+
         # 音量标准化到 -13 LUFS
         target_lufs = -13.0
         change_in_dBFS = target_lufs - audio.dBFS
         audio = audio.apply_gain(change_in_dBFS)
-
-        # 降噪处理
-        samples = np.array(audio.get_array_of_samples()).astype(np.float32)
-        reduced_noise = nr.reduce_noise(y=samples, sr=audio.frame_rate)
-        audio = audio._spawn(reduced_noise.astype(audio.array_type).tobytes())
 
         audio_duration = len(audio) / 1000.0  # 秒
         if current_group is None:
@@ -465,7 +461,7 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
     socketio.emit('workflow_progress',
                   {'task_id': task_id, 'step': 'start', 'message': 'Starting audio processing'})
 
-    merged_audio_group = merge_wav_files_grouped(files, 1800)  # 每组不超过1800秒（15分钟）
+    merged_audio_group = merge_wav_files_grouped(files, 600)  # 每组不超过600秒（10分钟）
 
     socketio.emit('workflow_progress',
                   {'task_id': task_id, 'step': 'merge',
@@ -528,7 +524,7 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
             if i == 0:
                 prompt = ('请将我上传的音频文件转录为文本，并精确标注每句话的起始时间、结束时间以及说话人。**转录内容必须严格按照语音流逐字输出，即使是中英文、或多国语言混合（语码转换）的句子，也必须完整保留所有语言的词汇，不得忽略任何一个词或部分。**'
                           '输出格式必须是 JSON，包含 "transcriptions"（数组） 和 "speaker_map"（说话人映射和特征）。'
-                          '时间格式严格遵循秒数（例如：86.160），speaker 请用 "Speaker 1" 等标识。')
+                          '时间格式严格遵循秒数（例如：86.160）时间戳的精度至关重要，转录系统必须尽最大努力保持时间同步，最小化长音频转录中的时间漂移或累积误差，speaker 请用 "Speaker 1" 等标识。')
                 contents = [prompt, combined_file]
             else:
                 # 构造包含参考说话人文件的 prompt
@@ -542,7 +538,7 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
                           f'1. 要转录的音频文件： {combined_file.name}\n'
                           f'2. 说话人参考：\n{refs_text}\n'
                           '3. 如果出现与参考都不同的新说话人，请按顺序标记为 Speaker X（例如 Speaker 5）。\n'
-                          '请将音频转录为文本，并精确标注每句话的起始时间、结束时间以及说话人。时间格式严格遵循秒数（例如：86.160），**转录内容必须严格按照语音流逐字输出，即使是中英文、或多国语言混合（语码转换）的句子，也必须完整保留所有语言的词汇，不得忽略任何一个词或部分。** 输出格式必须是 JSON：包含 "transcriptions" 数组以及 "speaker_map"。')
+                          '请将音频转录为文本，并精确标注每句话的起始时间、结束时间以及说话人。时间格式严格遵循秒数（例如：86.160）时间戳的精度至关重要，转录系统必须尽最大努力保持时间同步，最小化长音频转录中的时间漂移或累积误差，**转录内容必须严格按照语音流逐字输出，即使是中英文、或多国语言混合（语码转换）的句子，也必须完整保留所有语言的词汇，不得忽略任何一个词或部分。** 输出格式必须是 JSON：包含 "transcriptions" 数组以及 "speaker_map"。')
                 contents = [prompt, combined_file] + ref_objs
 
             socketio.emit('workflow_progress',
