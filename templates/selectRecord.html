@@ -892,32 +892,32 @@
                 <!-- 文本处理流程 (默认隐藏) -->
                 <div id="textProcessSection">
                     <div class="form-group" id="transcribeStatusSection">
-                        <!-- 添加语言选择下拉菜单 -->
-                        <div class="form-group">
-                            <label for="languageSelect">Recognition Language:</label>
-                            <select id="languageSelect" name="language"
-                                    style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                                <option value="auto">Auto-detect (Default)</option>
-                                <option value="zh">Chinese (中文)</option>
-                                <option value="en">English</option>
-                                <option value="es">Spanish (Español)</option>
-                                <option value="fr">French (Français)</option>
-                                <option value="de">German (Deutsch)</option>
-                                <option value="ja">Japanese (日本語)</option>
-                                <option value="ko">Korean (한국어)</option>
-                                <option value="ru">Russian (Русский)</option>
-                                <option value="pt">Portuguese (Português)</option>
-                                <option value="ar">Arabic (العربية)</option>
-                                <option value="hi">Hindi (हिन्दी)</option>
-                                <option value="it">Italian (Italiano)</option>
-                            </select>
-                        </div>
-                        <!-- 新增说话人数输入框 -->
-                        <div class="form-group">
-                            <label for="speakersNumInput">Number of Speakers (optional):</label>
-                            <input type="number" id="speakersNumInput" name="speakers_num" min="0" placeholder="Leave blank if unknown"
-                                   style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">
-                        </div>
+<!--                        &lt;!&ndash; 添加语言选择下拉菜单 &ndash;&gt;-->
+<!--                        <div class="form-group">-->
+<!--                            <label for="languageSelect">Recognition Language:</label>-->
+<!--                            <select id="languageSelect" name="language"-->
+<!--                                    style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">-->
+<!--                                <option value="auto">Auto-detect (Default)</option>-->
+<!--                                <option value="zh">Chinese (中文)</option>-->
+<!--                                <option value="en">English</option>-->
+<!--                                <option value="es">Spanish (Español)</option>-->
+<!--                                <option value="fr">French (Français)</option>-->
+<!--                                <option value="de">German (Deutsch)</option>-->
+<!--                                <option value="ja">Japanese (日本語)</option>-->
+<!--                                <option value="ko">Korean (한국어)</option>-->
+<!--                                <option value="ru">Russian (Русский)</option>-->
+<!--                                <option value="pt">Portuguese (Português)</option>-->
+<!--                                <option value="ar">Arabic (العربية)</option>-->
+<!--                                <option value="hi">Hindi (हिन्दी)</option>-->
+<!--                                <option value="it">Italian (Italiano)</option>-->
+<!--                            </select>-->
+<!--                        </div>-->
+<!--                        &lt;!&ndash; 新增说话人数输入框 &ndash;&gt;-->
+<!--                        <div class="form-group">-->
+<!--                            <label for="speakersNumInput">Number of Speakers (optional):</label>-->
+<!--                            <input type="number" id="speakersNumInput" name="speakers_num" min="0" placeholder="Leave blank if unknown"-->
+<!--                                   style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;">-->
+<!--                        </div>-->
                         <div class="btn-container">
                             <button type="button" class="btn" id="btnStartTranscription">Start Transcription</button>
                         </div>
@@ -1284,13 +1284,13 @@
         const form = document.getElementById('workflowForm');
         const startTime = form.querySelector('input[name="start_time"]').value;
         const endTime = form.querySelector('input[name="end_time"]').value;
-        const selectedLanguage = form.querySelector('#languageSelect').value;
+        // const selectedLanguage = form.querySelector('#languageSelect').value;
         const folderPath = document.getElementById('workflowFolderPath').value;
 
         // 新增：获取说话人数输入框的值
-        const speakersNumInput = document.getElementById('speakersNumInput');
-        let speakersNum = speakersNumInput && speakersNumInput.value ? parseInt(speakersNumInput.value, 10) : 0;
-        if (isNaN(speakersNum)) speakersNum = 0;
+        // const speakersNumInput = document.getElementById('speakersNumInput');
+        // let speakersNum = speakersNumInput && speakersNumInput.value ? parseInt(speakersNumInput.value, 10) : 0;
+        // if (isNaN(speakersNum)) speakersNum = 0;
 
         if (!startTime || !endTime) {
             alert('Please select both start and end times.');
@@ -1303,7 +1303,7 @@
         const formData = new FormData();
         formData.set('start_time', isUTC ? startTime : toUTCString(startTime));
         formData.set('end_time', isUTC ? endTime : toUTCString(endTime));
-        formData.set('language', selectedLanguage);
+        formData.set('language', "auto");
         formData.set('task_id', taskId);
 
         // 添加文件夹路径
@@ -1311,7 +1311,7 @@
             formData.set('folder_path', folderPath);
         }
         // 新增：添加speakers_num参数
-        formData.set('speakers_num', speakersNum);
+        formData.set('speakers_num', 0);
 
         const socket = io();
         let steps = [];
