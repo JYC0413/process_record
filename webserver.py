@@ -486,8 +486,8 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
                 "items": {
                     "type": "object",
                     "properties": {
-                        "start_time": {"type": "float"},
-                        "end_time": {"type": "float"},
+                        "start_time": {"type": "number"},
+                        "end_time": {"type": "number"},
                         "speaker": {"type": "string"},
                         "text": {"type": "string"}
                     },
