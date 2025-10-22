@@ -1355,6 +1355,7 @@
             if (msg.step === 'done') {
                 // 转录完成，显示结果
                 document.getElementById('transcribeTextarea').value = msg.result || '';
+                console.log(msg.speaker_map)
                 document.getElementById('transcribeResultSection').style.display = '';
                 document.getElementById('transcribeStatusSection').style.display = 'none';
                 document.getElementById('workflowProgressBar').style.display = 'none';

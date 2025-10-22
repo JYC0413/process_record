@@ -428,6 +428,13 @@ def get_api_models():
         return jsonify({"models": [], "error": f"Error fetching models: {str(e)}"}), 500
 
 
+def seconds_to_hhmmss(s: float) -> str:
+    h = int(s // 3600)
+    m = int((s % 3600) // 60)
+    sec = s % 60
+    return f"{h:02d}:{m:02d}:{sec:06.3f}"
+
+
 def transcribe_task(task_id, files, selected_language, speakers_num, folder_path):
     # 检查是否可以直接使用现有的diarization.txt文件
     if folder_path and selected_language == "auto" and speakers_num == 0:
@@ -613,12 +620,6 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
             # 计算当前组在整体音频中的偏移（秒），并生成偏移后的副本用于全局合并
             group_offset_seconds = sum(len(g) for g in merged_audio_group[:i]) / 1000.0
 
-            def seconds_to_hhmmss(s: float) -> str:
-                h = int(s // 3600)
-                m = int((s % 3600) // 60)
-                sec = s % 60
-                return f"{h:02d}:{m:02d}:{sec:06.3f}"
-
             shifted_transcriptions = []
             for entry in group_transcriptions:
                 st = entry.get('start_time', 0) + group_offset_seconds
@@ -741,10 +742,10 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
                 speaker_label = f"SPEAKER_{sanitized}"
             lines.append(f"[{start_str} --> {end_str}] [{speaker_label}] {text}")
         transcripts = "\n".join(lines)
-        
+
         socketio.emit('workflow_progress',
                       {'task_id': task_id, 'step': 'done', 'message': 'Transcription completed',
-                       'result': transcripts})
+                       'result': transcripts, 'speaker_map': global_speaker_map})
     except Exception as e:
         socketio.emit('workflow_progress',
                       {'task_id': task_id, 'step': 'error',
