@@ -462,21 +462,11 @@ def transcribe_task(task_id, files, selected_language, speakers_num, folder_path
 
     client = genai.Client()
 
-    def hhmmss_to_seconds(t: str) -> float:
-        # 支持 "HH:MM:SS" 或 "HH:MM:SS.xxx"
-        try:
-            parts = t.split(':')
-            h = float(parts[0])
-            m = float(parts[1])
-            s = float(parts[2])
-            return h * 3600 + m * 60 + s
-        except:
-            return 0.0
-
     socketio.emit('workflow_progress',
                   {'task_id': task_id, 'step': 'start', 'message': 'Starting audio processing'})
 
     merged_audio_group = merge_wav_files_grouped(files, 900)  # 每组不超过900秒（15分钟）
+
     socketio.emit('workflow_progress',
                   {'task_id': task_id, 'step': 'merge',
                    'message': f'Audio grouping completed, with a total of {len(merged_audio_group)} groups'})
@@ -1118,4 +1108,4 @@ def download_segment():
 
 
 if __name__ == "__main__":
-    socketio.run(app, port=8000, debug=True)
+    socketio.run(app, port=8000)
